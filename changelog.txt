@@ -1,0 +1,34 @@
+28-29/03/2018-v0.0.1------------------------------
+-added block mask system
+-added block merging
+-added background parallax
+-added player animation and hair randomization
+-added block stone block
+-added block dirt
+-added block ice block
+-added block snow block
+02/04/2018-v0.0.1---------------------------------
+-added simple world generation
+-added block wood block
+-added block grass
+-added world saving
+08/04/2018-v0.0.2---------------------------------
+-added biome woodland
+-added biome snow
+-added biome desert
+-added trees
+-added block sand
+-added block sandstone
+-added block tree trunk
+-added block leaves
+-added block snow leaves
+-added wall dirt
+-added wall stone
+-added wall wood
+-added wall snow
+-added wall sand
+-added wall sandstone
+-world saving improved (menu)
+09/04/2018-v0.0.2---------------------------------
+-added tutorial world
+-world saving improved (now saves spawn point and other details in a .dat file)
