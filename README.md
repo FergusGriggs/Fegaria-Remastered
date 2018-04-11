@@ -6,4 +6,6 @@
 
 ## You can turn off and on settings in the CONFIG.txt file
 
+## Includes tutorial world, full controls in CONTROLS.txt
 
+## Changes listed in changelog.txt
