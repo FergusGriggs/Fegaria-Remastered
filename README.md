@@ -9,3 +9,5 @@
 ## Includes tutorial world, full controls in CONTROLS.txt
 
 ## Changes listed in changelog.txt
+
+## Music and sounds from Terraria, not my own.
