@@ -1,4 +1,4 @@
-(pixels/tuple/int)RESOLUTION=800, 600
+(pixels/tuple/int)RESOLUTION=800,600
 (blocks/tuple/int)MAPSIZE=600,400
 (float)GRAVITY=0.2
 (bool)FULLSCREEN=0

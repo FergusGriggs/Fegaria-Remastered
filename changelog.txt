@@ -29,6 +29,10 @@
 -added wall sand
 -added wall sandstone
 -world saving improved (menu)
-09/04/2018-v0.0.2---------------------------------
+09-12/04/2018-v0.0.2---------------------------------
 -added tutorial world
 -world saving improved (now saves spawn point and other details in a .dat file)
+-added music volume controls
+-added hp and hotbar text
+-added more config options
+-fixed clipping through platforms when falling quickly

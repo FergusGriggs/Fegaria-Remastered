@@ -198,7 +198,10 @@ class Player():#stores all info about a player
                                                     if self.movingDown:
                                                         collide=False
                                                     else:
-                                                        if self.pos[1]+BLOCKSIZE<blockrect.top:
+                                                        if self.vel[1]<5:
+                                                            if self.pos[1]+BLOCKSIZE<blockrect.top:
+                                                                collide=True
+                                                        else:
                                                             collide=True
                                                 else:collide=True
                                                 if collide:
@@ -769,7 +772,9 @@ class World():
 def Exit():
     Save()
     pygame.quit()
+    print("\nRunning slowly? try turning off the particles, \nbackground or lowering the resolution")
     sys.exit()
+    
     
 def Save():
     pickle.dump(mapData,open("Saves/"+str(worldName)+".wrld","wb"))#save wrld
@@ -938,12 +943,16 @@ if RUNFULLSCREEN:screen=pygame.display.set_mode((screenW,screenH),FULLSCREEN)
 else:screen=pygame.display.set_mode((screenW,screenH))
 
 pygame.display.set_caption("fegaria remastered "+VERSION)
+
 pygame.mixer.pre_init(48000, -16, 2, 1024)
 pygame.init()
+musicVolume=0.2
 if MUSIC:
     pygame.mixer.music.load("Sound/day.mp3")
-    pygame.mixer.music.set_volume(0.1)
+    pygame.mixer.music.set_volume(musicVolume)
     pygame.mixer.music.play()
+    
+
 
 playerWidth=26
 playerHeight=48
@@ -1006,9 +1015,7 @@ while 1:
     updateParticles()
     clientPlayer.update()
     clientPlayer.animate()
-    
-    
-            
+        
     if BACKGROUND:
         if fadeBack:
             if fadeFloat<1:
@@ -1109,7 +1116,15 @@ while 1:
             if event.key==K_8:blockInHand=7;print("Hand: Silver");renderHandText()
             if event.key==K_9:blockInHand=8;print("Hand: Sand");renderHandText()
             if event.key==K_0:blockInHand=13;print("Hand: Platform");renderHandText()
-            
+
+            if event.key==K_UP and shift:
+                musicVolume+=0.05
+                if musicVolume>1:musicVolume=1
+                pygame.mixer.music.set_volume(musicVolume)
+            if event.key==K_DOWN and shift:
+                musicVolume-=0.05
+                if musicVolume<0:musicVolume=0
+                pygame.mixer.music.set_volume(musicVolume)
 ##            if event.key==K_a:blockInHand=74
 ##            if event.key==K_b:blockInHand=75
 ##            if event.key==K_c:blockInHand=76
