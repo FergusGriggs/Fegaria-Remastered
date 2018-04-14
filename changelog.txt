@@ -36,3 +36,17 @@
 -added hp and hotbar text
 -added more config options
 -fixed clipping through platforms when falling quickly
+13-14/04/2018-v0.0.3---------------------------------
+-added sword wooden
+-added sword copper
+-added sword GOD SLAYER
+-added item prefixes
+-added enemy blue slime
+-added enemy green slime
+-added enemy red slime
+-added enemy purple slime
+-added enemy yellow slime
+-added item descriptions
+-added sword animations
+-added damage numbers
+-added death messages

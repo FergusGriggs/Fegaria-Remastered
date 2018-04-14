@@ -1,4 +1,4 @@
-(pixels/tuple/int)RESOLUTION=800,600
+(pixels/tuple/int)RESOLUTION=1280,720
 (blocks/tuple/int)MAPSIZE=600,400
 (float)GRAVITY=0.2
 (bool)FULLSCREEN=0
@@ -9,3 +9,5 @@
 (bool)CREATIVE=0
 (bool)BACKGROUND=1
 (float)PARALLAXAMNT=0.35
+(bool)PASSIVE=0
+(int)MAXENEMYSPAWNS=3
