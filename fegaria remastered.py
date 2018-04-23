@@ -1606,14 +1606,14 @@ def spawnEnemy(pos=None,ID=None):
                 blockpos=(math.floor(randompos[1]//BLOCKSIZE),math.floor(randompos[0]//BLOCKSIZE))
                 if onScreen(blockpos[0],blockpos[1],width=2):
                     if mapData[blockpos[0]][blockpos[1]][0] in uncollidableBlocks:
-##                        if mapData[blockpos[0]-1][blockpos[1]][0] in uncollidableBlocks:
-##                            if mapData[blockpos[0]+1][blockpos[1]][0] in uncollidableBlocks:
-##                                if mapData[blockpos[0]][blockpos[1]-1][0] in uncollidableBlocks:
-##                                    if mapData[blockpos[0]][blockpos[1]+1][0] in uncollidableBlocks:
-##                                        if mapData[blockpos[0]-1][blockpos[1]-1][0] in uncollidableBlocks:
-##                                            if mapData[blockpos[0]-1][blockpos[1]+1][0] in uncollidableBlocks:
-##                                                if mapData[blockpos[0]+1][blockpos[1]-1][0] in uncollidableBlocks:
-##                                                    if mapData[blockpos[0]+1][blockpos[1]+1][0] in uncollidableBlocks:
+                        if mapData[blockpos[0]-1][blockpos[1]][0] in uncollidableBlocks:
+                            if mapData[blockpos[0]+1][blockpos[1]][0] in uncollidableBlocks:
+                                if mapData[blockpos[0]][blockpos[1]-1][0] in uncollidableBlocks:
+                                    if mapData[blockpos[0]][blockpos[1]+1][0] in uncollidableBlocks:
+                                        if mapData[blockpos[0]-1][blockpos[1]-1][0] in uncollidableBlocks:
+                                            if mapData[blockpos[0]-1][blockpos[1]+1][0] in uncollidableBlocks:
+                                                if mapData[blockpos[0]+1][blockpos[1]-1][0] in uncollidableBlocks:
+                                                    if mapData[blockpos[0]+1][blockpos[1]+1][0] in uncollidableBlocks:
                                                         Enemy(((blockpos[1]+0.5)*BLOCKSIZE,(blockpos[0]+0.5)*BLOCKSIZE),ID)
                                                         return
         return
