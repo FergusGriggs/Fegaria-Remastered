@@ -1950,7 +1950,7 @@ loadPlayerData()
 
 loadSaves()
 
-VERSION="0.0.3"
+VERSION="0.0.4"
 
 if RUNFULLSCREEN:screen=pygame.display.set_mode((screenW,screenH),FULLSCREEN)
 else:screen=pygame.display.set_mode((screenW,screenH))
