@@ -2,6 +2,11 @@
 import pygame, sys, math, time, os, random, perlin, pickle, datetime
 from pygame.locals import *
 
+__author__="Fergus Griggs"
+__email__="fbob987 at gmail dot com"
+__version__="0.0.4"
+
+
 def moveParallax(val):
     global parallaxPos
     parallaxPos=(parallaxPos[0]+val[0],parallaxPos[1]+val[1])
@@ -1950,12 +1955,11 @@ loadPlayerData()
 
 loadSaves()
 
-VERSION="0.0.4"
 
 if RUNFULLSCREEN:screen=pygame.display.set_mode((screenW,screenH),FULLSCREEN)
 else:screen=pygame.display.set_mode((screenW,screenH))
 
-pygame.display.set_caption("fegaria remastered "+VERSION)
+pygame.display.set_caption("fegaria remastered "+__version__)
 #set to 8000 for creepy mode (48000 norm)
 pygame.mixer.pre_init(48000, -16, 2, 1024)
 pygame.init()
