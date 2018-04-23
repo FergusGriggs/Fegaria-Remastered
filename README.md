@@ -6,7 +6,7 @@
 I've tried to use only modules that are installed when python 3.6.4 
 is installed, so all you have to do is run the 'fegaria remastered.py'
 file to play the game.
-### Required modules: 
+### Required modules (pre installed): 
 - pygame
 - sys
 - math
