@@ -4,14 +4,14 @@
 
 ## Installation
 ### Required modules: 
--pygame
--sys
--math
--time
--os
--random
--pickle
--datetime
+- pygame
+- sys
+- math
+- time
+- os
+- random
+- pickle
+- datetime
 
 ## Notes:
 - You can turn off and on settings in the CONFIG.txt file
