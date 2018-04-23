@@ -1,10 +1,10 @@
 #fegaria remastered
-import pygame, sys, math, time, os, random, perlin, pickle, datetime
-from pygame.locals import *
-
 __author__="Fergus Griggs"
 __email__="fbob987 at gmail dot com"
 __version__="0.0.4"
+
+import pygame, sys, math, time, os, random, perlin, pickle, datetime
+from pygame.locals import *
 
 
 def moveParallax(val):
