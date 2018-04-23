@@ -50,3 +50,14 @@
 -added sword animations
 -added damage numbers
 -added death messages
+22-23/04/2018-v0.0.4----------------------------------
+-added projectiles
+-added simple player creation saving
+-added item/ranged weapon wooden bow
+-added item/ammo/projectile wooden arrow
+-improved text readability and quality
+-added enemy hover text
+-added item tier colours
+-improved 'hotbar' and item descriptions
+-added ranged prefix 'ADMIN'
+-added 'FANCYTEXT' config option

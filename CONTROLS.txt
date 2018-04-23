@@ -12,3 +12,6 @@ REVERSE GRAVITY:g
 RESPAWN:j
 VOLUME UP: shift + up arrow
 VOLUME DOWN: shift + up down
+SET SPAWN POINT: shift + s
+RANDOMIZE ITEM PREFIX: p
+KILL ALL ENEMIES: k 
