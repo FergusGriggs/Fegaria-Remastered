@@ -1439,8 +1439,7 @@ def checkMerge(ID1,ID2):#which blocks should merge with each other
     else:return False
     
 def drawDeathMessage():#message shown on death
-    font=pygame.font.Font(fontFilePath,40)
-    text=outlineText("You Were Slain",(255,255,255),font)
+    text=outlineText("You Were Slain",(255,255,255),LARGEFONT)
     val=(1-(clientPlayer.respawnTick/500))*500
     if val>255:val=255
     text.set_alpha(val)
@@ -2669,14 +2668,8 @@ while 1:
     drawDamageNumbers()
     drawMessages()
     checkEnemyHover()
-    
-##    if not clientPlayer.inventoryOpen:
-##        screen.blit(handText,(0,60))
-##        screen.blit(hpText,(0,80))
-##        if statsVisible:
-##            screen.blit(statsText,(0,100))
-        
-    
+    if not clientPlayer.alive:
+        drawDeathMessage()
     screen.blit(fpsText,(screenW-fpsText.get_width(),0))
 
     screen.blit(clientPlayer.hotbarImage,(5,20))
