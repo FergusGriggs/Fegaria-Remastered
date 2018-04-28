@@ -1,8 +1,7 @@
 # Fegaria-Remastered
 
-![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/Screenshots/Untitled.png)
-
  Similar to my other project Fegaria, but with improved graphics, collisions and terrain generation. 
+![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/Screenshots/screenshot12.png)
 
 ## Installation
 I've only used modules that are installed when python 3.6.4 
