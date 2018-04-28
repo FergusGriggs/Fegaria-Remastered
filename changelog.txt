@@ -75,3 +75,4 @@
 -added Tool/item Copper Pickaxe
 -moved quit button into the bottom right (when in inventory)
 -updated block functions, blocks have to be destroyed with a pickaxe now
+-several new config options
