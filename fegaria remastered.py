@@ -2050,7 +2050,7 @@ def spawnEnemy(pos=None,ID=None):
             ID=random.randint(0,1)
         elif clientPlayer.pos[1]<300*BLOCKSIZE:
             ID=random.randint(1,2)
-        elif clientPlayer.pos[1]<400*BLOCKSIZE:
+        elif clientPlayer.pos[1]>=300*BLOCKSIZE:
             ID=random.randint(3,4)
     if pos == None:
         spawnRect=Rect(clientPlayer.pos[0]-screenW/2,clientPlayer.pos[1]-screenH/2,screenW,screenH)
@@ -2765,12 +2765,11 @@ while 1:
             if event.key==K_g:
                 GRAVITY=-GRAVITY;print("Gravity Reversed")
             if event.key==K_p:
-                clientPlayer.hotbar[clientPlayer.hotbarIndex]=Item(clientPlayer.hotbar[clientPlayer.hotbarIndex].ID)
-                message("Item prefix randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
-                clientPlayer.renderCurrentItemImage()
-                renderHandText()
-                statsVisible=True
-                statDisappearTick=500
+                if clientPlayer.hotbar[clientPlayer.hotbarIndex]!=None:
+                    clientPlayer.hotbar[clientPlayer.hotbarIndex]=Item(clientPlayer.hotbar[clientPlayer.hotbarIndex].ID)
+                    message("Item prefix randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
+                    clientPlayer.renderCurrentItemImage()
+                    renderHandText()
                 
             if event.key==K_1:clientPlayer.hotbarIndex=0;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
             if event.key==K_2:clientPlayer.hotbarIndex=1;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
