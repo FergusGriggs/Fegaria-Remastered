@@ -7,7 +7,7 @@ PLACE WALL:shift + m1
 DESTROY BLOCK:m2
 DESTROY WALL:shift + m2
 RANDOMIZE HAIR:r
-CHANGE BLOCKS:0-9
+SELECT HOTBAR ITEMS:0-9 or scroll wheel 
 REVERSE GRAVITY:g
 RESPAWN:j
 VOLUME UP: shift + up arrow
@@ -15,3 +15,4 @@ VOLUME DOWN: shift + up down
 SET SPAWN POINT: shift + s
 RANDOMIZE ITEM PREFIX: p
 KILL ALL ENEMIES: k 
+OPEN INVENTORY: escape (quit button in bottom right when inventory is open)

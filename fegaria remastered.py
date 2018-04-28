@@ -1,11 +1,11 @@
 #fegaria remastered
 __author__="Fergus Griggs"
 __email__="fbob987 at gmail dot com"
-__version__="0.0.4"
+__version__="0.0.5"
+
 
 import pygame, sys, math, time, os, random, perlin, pickle, datetime
 from pygame.locals import *
-
 
 def moveParallax(val):
     global parallaxPos
@@ -25,7 +25,16 @@ def loadTileMasks():
             surf.blit(tilemaskimg,(-i*9,-j*9))
             surf=pygame.transform.scale(surf,(BLOCKSIZE,BLOCKSIZE))
             tilemasks.append(surf)
-            
+def loadMiscGui():
+    global miscGuiImages
+    miscGuiImages=[]
+    miscTilesetimg=pygame.image.load("Textures/miscTileset.png").convert()
+    for j in range(1):
+        for i in range(1):
+            surf=pygame.Surface((48,48))
+            surf.set_colorkey((255,0,255))
+            surf.blit(miscTilesetimg,(-i*48,-j*48))
+            miscGuiImages.append(surf)
 def loadBackgroundImages():
     global backgroundImages
     backgroundimg=pygame.image.load("Textures/backgroundTilesheet.png").convert()
@@ -264,7 +273,7 @@ class Enemy():
             valy=-3*(1-self.knockBackResist)
             self.vel=(direction*valx,valy)
         damageNumber(self.pos,val,crit=crit)
-        if self.HP>0:#check if the player has died from damage
+        if self.HP>0:#check if the enemy has died from damage
             if SFX:
                 sounds[13].play()
             if PARTICLES:
@@ -274,6 +283,11 @@ class Enemy():
             self.kill()
             
     def kill(self):
+        coinRange=enemyData[self.ID][8]
+        coinDrops=coinsFromVal(random.randint(coinRange[0],coinRange[1]))
+        for i in range(len(coinDrops)):
+            if coinDrops[i]>0:
+                PhysicsItem(self.pos,24-i,amnt=coinDrops[i],pickupDelay=0)
         if PARTICLES:
             for i in range(int(25*PARTICLEDENSITY)):#more blood
                 Particle((self.pos[0]-clientPlayer.pos[0]+screenW/2,self.pos[1]-clientPlayer.pos[1]+screenH/2),self.bloodColour,life=100,GRAV=0.02,angle=-math.pi/2,spread=math.pi,magnitude=random.random()*4)
@@ -306,6 +320,8 @@ class Enemy():
             col=(255*(1-hpFloat),255*hpFloat,0)
             pygame.draw.rect(screen,darkenCol(col),Rect(left,top+30,self.rect.width,10),0)
             pygame.draw.rect(screen,col,Rect(left+2,top+32,(self.rect.width-4)*hpFloat,6),0)
+        if HITBOXES:
+            pygame.draw.rect(screen,(255,0,0),Rect(self.rect.left-clientPlayer.pos[0]+screenW/2,self.rect.top-clientPlayer.pos[1]+screenH/2,self.rect.width,self.rect.height),1)
             
     def runAI(self):
         if self.type=="Slime":
@@ -335,7 +351,17 @@ def updateEnemies():
 def drawEnemies():
     for enemy in enemies:
         enemy.draw()
-        
+def coinsFromVal(val):
+    coins=[0,0,0,0]
+    coins[0] = val//1000000
+    val-=coins[0]*1000000
+    coins[1] = val//10000
+    val-=coins[1]*10000
+    coins[2] = val//100
+    val-=coins[2]*100
+    coins[3] = val
+    return coins
+    
 class Player():#stores all info about a player
     def __init__(self,pos,model,name="unassigned",HP=100,maxHP=100,hotbar=None,inventory=None,playTime=0,creationDate=None):
         self.pos=pos
@@ -349,11 +375,11 @@ class Player():#stores all info about a player
             date=datetime.datetime.now()
             self.creationDate=str(str(date)[:19])
         else:self.creationDate=creationDate
-        if hotbar==None:self.hotbar=[Item(0),Item(1),Item(2),Item(3),Item(4),Item(5),Item(6),Item(17),Item(15),Item(13)]
+        if hotbar==None:self.hotbar=[Item(25),Item(15),Item(19),Item(17),Item(0,amnt=100),Item(1,amnt=100),Item(2,amnt=100),Item(3,amnt=100),Item(4,amnt=100),Item(13,amnt=100)]
         else:self.hotbar=hotbar
-        if inventory==None:self.inventory=[[None for i in range(10)]for j in range(4)]
+        if inventory==None:self.inventory=[[None for i in range(4)]for j in range(10)]
         else:self.inventory=inventory
-        
+        self.miningTick=0
         self.playTime=playTime
         self.renderSprites()
         self.animationTick=0
@@ -386,6 +412,12 @@ class Player():#stores all info about a player
         self.swingAngle=0
         self.itemSwing=False
         self.enemiesHit=[]
+        self.unPickupableItems=[]
+        self.hotbarImage=pygame.Surface((480,48));self.hotbarImage.set_colorkey((255,0,255))
+        self.inventoryImage=pygame.Surface((480,192));self.inventoryImage.set_colorkey((255,0,255))
+        self.inventoryOpen=False
+        self.oldInventoryPositions=[]
+        self.posDiff=(0,0)
     def update(self):
         if self.alive:
             if self.movingLeft:#moves player left
@@ -426,7 +458,21 @@ class Player():#stores all info about a player
                     self.pos=(self.pos[0],int(WORLDBOARDER_SOUTH))
                     self.vel=(self.vel[0],0)
                     self.grounded=True
-            
+
+            if self.miningTick<=0:
+                use=False
+                if clientPlayer.inventoryOpen:
+                    if not Rect(5,5,480,244).collidepoint(m):
+                        use=True
+                else:use=True
+                if use:
+                    if pygame.mouse.get_pressed()[0]:
+                        self.useItem()
+                    elif pygame.mouse.get_pressed()[2]:
+                        self.useItem(alt=True)
+            else:
+                self.miningTick-=1
+                
             for j in range(-2,3):
                 for i in range(-2,3):
                     try:
@@ -499,7 +545,7 @@ class Player():#stores all info about a player
                 self.respawnTick-=1
             else:
                 self.respawn()
-                
+        self.updateInventoryOldSlots()
     def damage(self,val,source,knockBack=0,direction=None):
         if not CREATIVE and self.alive:
             val-=self.defense
@@ -509,7 +555,6 @@ class Player():#stores all info about a player
             self.HP-=val
             damageNumber(self.pos,val,colour=(240,20,20))
             if self.HP<0:self.HP=0
-            renderHpText()
             if knockBack!=0:
                 valx=knockBack*(1-self.knockBackResist)
                 valy=-3*(1-self.knockBackResist)
@@ -541,12 +586,12 @@ class Player():#stores all info about a player
         self.vel=(0,0)
         self.alive=True
         self.HP=int(self.maxHP)#reset hp
-        renderHpText()
     def renderCurrentItemImage(self):
         item=self.hotbar[self.hotbarIndex]
-        self.currentItemImage=itemImages[item.ID].copy()
-        scale=item.size/itemData[item.ID][4][3]
-        self.currentItemImage=pygame.transform.scale(self.currentItemImage,(int(self.currentItemImage.get_width()*scale),int(self.currentItemImage.get_height()*scale)))
+        if item!=None:
+            self.currentItemImage=itemImages[item.ID].copy()
+            scale=item.size/itemData[item.ID][4][3]
+            self.currentItemImage=pygame.transform.scale(self.currentItemImage,(int(self.currentItemImage.get_width()*scale),int(self.currentItemImage.get_height()*scale)))
     def animate(self):
             if not self.armSwing:#arm swing overrides other animations (sometimes causes sliding)
                 if self.animationTick<=0:#happens every 'animationSpeed' frames
@@ -620,101 +665,318 @@ class Player():#stores all info about a player
                     surf.blit(torsoFrames[i],(0,4))
                 self.sprites.append(surf)
     def useItem(self,alt=False):
-        global mapData, miningTick
+        global mapData
         swing=False
         item=self.hotbar[self.hotbarIndex]
-        if "block" in item.tags:
-            if not alt:
-                blockpos=(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
-                blockrect=Rect(BLOCKSIZE*blockpos[0],BLOCKSIZE*blockpos[1]+1,BLOCKSIZE,BLOCKSIZE)
-                if not blockrect.colliderect(clientPlayer.rect):
-                    if shift:
-                        if mapData[blockpos[0]][blockpos[1]][1]==-1:
-                            if getNeighborCount(blockpos[0],blockpos[1],tile=1)>0:
-                                mapData[blockpos[0]][blockpos[1]][1]=item.ID
-                                updateSurface(blockpos[0],blockpos[1])
-                                if SFX:
-                                    playHitSfx(item.ID)
-                                swing=True
-                    else:
-                        if mapData[blockpos[0]][blockpos[1]][0]==-1:
-                            if getNeighborCount(blockpos[0],blockpos[1])>0:
-                                mapData[blockpos[0]][blockpos[1]][0]=item.ID
-                                updateSurface(blockpos[0],blockpos[1])
-                                if SFX:
-                                    playHitSfx(item.ID)
-                                swing=True
+        if item!=None:
+            if "block" in item.tags:
+                if math.sqrt((screenW/2-m[0])**2+(screenH/2-m[1])**2)<BLOCKSIZE*6 or CREATIVE:
+                    blockpos=(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
+                    blockrect=Rect(BLOCKSIZE*blockpos[0],BLOCKSIZE*blockpos[1]+1,BLOCKSIZE,BLOCKSIZE)
+                    if not blockrect.colliderect(clientPlayer.rect):
+                        if shift:
+                            if mapData[blockpos[0]][blockpos[1]][1]==-1:
+                                if getNeighborCount(blockpos[0],blockpos[1],tile=1)>0:
+                                    if not CREATIVE:
+                                        self.hotbar[self.hotbarIndex].amnt-=1
+                                        dat=["H",self.hotbarIndex]
+                                        if dat not in self.oldInventoryPositions:
+                                            self.oldInventoryPositions.append(dat)
+                                        if self.hotbar[self.hotbarIndex].amnt<=0:
+                                            self.hotbar[self.hotbarIndex]=None
+                                    mapData[blockpos[0]][blockpos[1]][1]=item.ID
+                                    updateSurface(blockpos[0],blockpos[1])
+                                    if SFX:
+                                        playHitSfx(item.ID)
+                                    swing=True
+                        else:
+                            if mapData[blockpos[0]][blockpos[1]][0]==-1:
+                                if getNeighborCount(blockpos[0],blockpos[1])>0:
+                                    if not CREATIVE:
+                                        self.hotbar[self.hotbarIndex].amnt-=1
+                                        dat=["H",self.hotbarIndex]
+                                        if dat not in self.oldInventoryPositions:
+                                            self.oldInventoryPositions.append(dat)
+                                        if self.hotbar[self.hotbarIndex].amnt<=0:
+                                            self.hotbar[self.hotbarIndex]=None
+                                    mapData[blockpos[0]][blockpos[1]][0]=item.ID
+                                    updateSurface(blockpos[0],blockpos[1])
+                                    if SFX:
+                                        playHitSfx(item.ID)
+                                    swing=True
 
-            else:
-                if CREATIVE:#delay to destroy another block
-                    miningTick=0
-                else:
-                    miningTick=10
-                    
-                if shift:datIndex=1#wall or block being clicked
-                else:datIndex=0
-                
-                tile=mapData[int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE)][int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE)][datIndex]
-                if tile!=-1:
-                    if tile==5:
-                        mapData[int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE)][int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE)][datIndex]=0
-                    else:
-                        mapData[int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE)][int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE)][datIndex]=-1
-                    updateSurface(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
-                    if tile in platformBlocks:  
-                        colour=pygame.transform.average_color(tileImages[tile],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
-                    else:colour=pygame.transform.average_color(tileImages[tile])
-                    
-                    if SFX:
-                        playHitSfx(tile)
-                    if PARTICLES:
-                        for i in range(int(random.randint(2,3)*PARTICLEDENSITY)):
-                            Particle(m,colour,size=10,life=100,angle=-math.pi/2,spread=math.pi,GRAV=0.05)
+            elif "pickaxe" in item.tags:
+                if self.canUse and math.sqrt((screenW/2-m[0])**2+(screenH/2-m[1])**2)<BLOCKSIZE*6 or CREATIVE:
+                    self.enemiesHit=[]
+                    self.canUse=False
+                    self.useTick=int(item.attackSpeed)
                     swing=True
-        elif "melee" in item.tags:
-            if self.canUse:
-                self.enemiesHit=[]
-                self.canUse=False
-                self.useTick=int(item.attackSpeed)
-                sounds[15].play()
-                swing=True
-                self.itemSwing=True
-                if self.direction==1:self.swingAngle=10
-                else:self.swingAngle=65
-                
-        if swing:
-            if not self.armSwing:
-                self.armSwing=True
-                if self.direction==1:
-                    self.animationFrame=0
-                else:
-                    self.animationFrame=19
-        elif "ranged" in item.tags:
-            if self.canUse:
-                if m[0]<screenW/2:
-                    self.direction=0
-                else:self.direction=1
-                self.canUse=False
-                self.armHold=True
-                self.holdAngle=math.atan2(-m[1]+screenH/2,m[0]-screenW/2)
-                self.useTick=int(item.attackSpeed)
-                angle=math.atan2(m[1]-screenH/2,m[0]-screenW/2)
-                pos=(clientPlayer.pos[0],clientPlayer.pos[1])
-                weaponDamage=item.attackDamage
-                ammoID=0
-                source=self.name
-                crit=False
-                sounds[16].play()
-                if random.random()<item.critStrikeChance:
-                    crit=True
-                if item.hasPrefix:
-                    damageModifier=(1+item.prefixData[1][1])
-                    knockbackModifier=(+item.prefixData[1][4])
-                    if item.prefixData[0]=="ranged":
-                        velocityModifier=(1+item.prefixData[1][5])
+                    self.itemSwing=True
+                    if self.direction==1:self.swingAngle=10
+                    else:self.swingAngle=65
+                    
+                    if shift:datIndex=1#wall or block being clicked
+                    else:datIndex=0
+                    blockpos=(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
+                    tile=mapData[blockpos[0]][blockpos[1]][datIndex]
+                    if tile!=-1:
+                        if tile==5:
+                            mapData[blockpos[0]][blockpos[1]][datIndex]=0
+                        else:
+                            mapData[blockpos[0]][blockpos[1]][datIndex]=-1
+                            PhysicsItem(((blockpos[0]+0.5)*BLOCKSIZE,(blockpos[1]+0.5)*BLOCKSIZE),tile,pickupDelay=0)
+                        updateSurface(blockpos[0],blockpos[1])
+                        if tile in platformBlocks:  
+                            colour=pygame.transform.average_color(tileImages[tile],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
+                        else:colour=pygame.transform.average_color(tileImages[tile])
+                        
+                        if SFX:
+                            playHitSfx(tile)
+                        if PARTICLES:
+                            for i in range(int(random.randint(2,3)*PARTICLEDENSITY)):
+                                Particle(m,colour,size=10,life=100,angle=-math.pi/2,spread=math.pi,GRAV=0.05)
+                    
+            elif "melee" in item.tags:
+                if self.canUse:
+                    self.enemiesHit=[]
+                    self.canUse=False
+                    self.useTick=int(item.attackSpeed)
+                    if SFX:
+                        sounds[15].play()
+                    swing=True
+                    self.itemSwing=True
+                    if self.direction==1:self.swingAngle=10
+                    else:self.swingAngle=65
+                    
+            if swing:
+                if not self.armSwing:
+                    self.armSwing=True
+                    if self.direction==1:
+                        self.animationFrame=0
                     else:
-                        velocityModifier=1
-                fireProjectile(pos,angle,weaponDamage,ammoID,source,crit,damageModifier=damageModifier,knockbackModifier=knockbackModifier,velocityModifier=velocityModifier)
+                        self.animationFrame=19
+            elif "ranged" in item.tags:
+                if self.canUse:
+                    if m[0]<screenW/2:
+                        self.direction=0
+                    else:self.direction=1
+                    self.canUse=False
+                    self.armHold=True
+                    self.holdAngle=math.atan2(-m[1]+screenH/2,abs(m[0]-screenW/2))
+                    self.useTick=int(item.attackSpeed)
+                    angle=math.atan2(m[1]-screenH/2,m[0]-screenW/2)
+                    pos=(clientPlayer.pos[0],clientPlayer.pos[1])
+                    weaponDamage=item.attackDamage
+                    weaponKnockback=item.knockback
+                    weaponVel=item.velocity
+                    if "gun" in item.tags:
+                        ammoID=1
+                    elif "bow" in item.tags:
+                        ammoID=0
+                    source=self.name
+                    crit=False
+                    if random.random()<item.critStrikeChance:
+                        crit=True
+                    fireProjectile(pos,angle,weaponDamage,weaponKnockback,weaponVel,ammoID,source,crit)
+    def giveItem(self,ID,amnt=1,pos=None,unique=False,item=None):
+        if pos==None:
+            coin=False
+            if ID>=21 and ID<=23:
+                coin=True
+            searchData=self.findExistingItemStacks(ID)#find all suitable slots
+            while len(searchData[0])>0 and amnt>0:#fill all stacks of the same item first
+                fillCount=searchData[0][0][2]#work out how many to add to the stack
+                amnt-=fillCount
+                if amnt<0:
+                    fillCount+=amnt
+                if searchData[0][0][0]=="H":#if item in hotbar increase the amnt by the calculated fillcount
+                    self.hotbar[searchData[0][0][1]].amnt+=fillCount
+                    if coin:
+                        if self.hotbar[searchData[0][0][1]].amnt==itemData[ID][4][10]:
+                            if amnt>0:
+                                self.hotbar[searchData[0][0][1]].amnt=amnt
+                            else:
+                                self.hotbar[searchData[0][0][1]]=None
+                            self.giveItem(ID+1)
+                            amnt=0
+                elif searchData[0][0][0]=="I":#if item in inventory increase the amnt by the calculated fillcount
+                    self.inventory[searchData[0][0][1][0]][searchData[0][0][1][1]].amnt+=fillCount
+                    if coin:
+                        if self.inventory[searchData[0][0][1][0]][searchData[0][0][1][1]].amnt==itemData[ID][4][10]:
+                            if amnt>0:
+                                self.inventory[searchData[0][0][1][0]][searchData[0][0][1][1]].amnt=amnt
+                            else:
+                                self.inventory[searchData[0][0][1][0]][searchData[0][0][1][1]]=None
+                            self.giveItem(ID+1)
+                            amnt=0
+                dat=[searchData[0][0][0],searchData[0][0][1]]
+                if dat not in self.oldInventoryPositions:
+                    self.oldInventoryPositions.append(dat)#flag the position for a surface update
+                searchData[0].remove(searchData[0][0])#remove the used data
+            while len(searchData[1])>0 and amnt>0:#no stacks left to fill so fill empty slots
+                fillCount=searchData[1][0][2]#work out how many to add to the stack
+                amnt-=fillCount
+                if amnt<0:
+                    fillCount+=amnt
+                if searchData[1][0][0]=="H":#if item in hotbar increase the amnt by the calculated fillcount
+                    self.hotbar[searchData[1][0][1]]=Item(ID,amnt=fillCount)
+                elif searchData[1][0][0]=="I":#if item in inventory increase the amnt by the calculated fillcount
+                    self.inventory[searchData[1][0][1][0]][searchData[1][0][1][1]]=Item(ID,amnt=fillCount,prefixData=prefixData)
+                dat=[searchData[1][0][0],searchData[1][0][1]]
+                if dat not in self.oldInventoryPositions:
+                    self.oldInventoryPositions.append(dat)#flag the position for a surface update
+                searchData[1].remove(searchData[1][0])#remove the used data
+            if amnt<=0:
+                return [True]
+            else:
+                if ID not in self.unPickupableItems:
+                    self.unPickupableItems.append(ID)
+                return [False,amnt]
+        else:
+            if pos[0]=="H":
+                if self.hotbar[pos[1]]==None:
+                    if unique:
+                        self.hotbar[pos[1]]=item
+                    else:
+                        self.hotbar[pos[1]]=Item(ID,amnt=amnt)
+                    return [0]
+                elif self.hotbar[pos[1]].ID==ID:
+                    if not unique:
+                        self.hotbar[pos[1]].amnt+=amnt
+                        if self.hotbar[pos[1]].amnt>itemData[ID][4][10]:
+                            amnt=self.hotbar[pos[1]].amnt-itemData[ID][4][10]
+                            self.hotbar[pos[1]].amnt=itemData[ID][4][10]
+                            return [1,amnt]
+                    else:
+                        item=self.hotbar[pos[1]]
+                        return [2,item,"H"]
+                elif self.hotbar[pos[1]].ID!=ID:
+                    item=self.hotbar[pos[1]]
+                    return [2,item,"H"]
+            elif pos[0]=="I":
+                if self.inventory[pos[1][0]][pos[1][1]]==None:
+                    if unique:
+                        self.inventory[pos[1][0]][pos[1][1]]=item
+                    else:
+                        self.inventory[pos[1][0]][pos[1][1]]=Item(ID,amnt=amnt,prefixData=prefixData)
+                    return [0]
+                elif self.inventory[pos[1][0]][pos[1][1]].ID==ID:
+                    if not unique:
+                        self.inventory[pos[1][0]][pos[1][1]].amnt+=amnt
+                        if self.inventory[pos[1][0]][pos[1][1]].amnt>itemData[ID][4][10]:
+                            amnt=self.inventory[pos[1][0]][pos[1][1]].amnt-itemData[ID][4][10]
+                            self.inventory[pos[1][0]][pos[1][1]].amnt=itemData[ID][4][10]
+                            return [1,amnt]
+                    else:
+                        item=self.inventory[pos[1][0]][pos[1][1]]
+                        return [2,item,"I"]
+                elif self.inventory[pos[1][0]][pos[1][1]].ID!=ID:
+                    item=self.inventory[pos[1][0]][pos[1][1]]
+                    return [2,item,"I"]
+##    def sortCoins(self):
+##        total=0#idea: get positions of plat gold silver and copper, if copper amnt = 100 +1 to silver if silver=100 +1 to gold,if gold==100 +1 to plat
+##        #this should maintain the positions of coins in the inventory or just check if it's a coin in the give item code and work it out there
+##        positions=[]
+##        for j in range(4):
+##            for i in range(10):
+##                item=self.inventory[i][j]
+##                if item!=None:
+##                    if item.ID>=21 and item.ID<=24:
+##                        positions.append((i,j))
+##                        if item.ID==24:
+##                            total+=item.amnt*1000000
+##                        elif item.ID==23:
+##                            total+=item.amnt*10000
+##                        elif item.ID==22:
+##                            total+=item.amnt*100
+##                        elif item.ID==21:
+##                            total+=item.amnt
+##                        self.inventory[i][j]=None
+##                        pos=["I",(i,j)]
+##                        if pos not in self.oldInventoryPositions:
+##                            self.oldInventoryPositions.append(pos)
+##                else:positions.append((i,j))
+##        coins=coinsFromVal(total)
+##        positions=sorted(positions,key=lambda x:x[1])
+##        for i in range(len(coins)):
+##            if coins[i]>0:
+##                if len(positions)>0:
+##                    self.inventory[positions[0][0]][positions[0][1]]=Item(24-i,amnt=coins[i])
+##                    positions.remove(positions[0])
+                    
+            
+                
+    def removeItem(self,pos):
+        if pos[0]=="H":
+            item=self.hotbar[pos[1]]
+            self.hotbar[pos[1]]=None
+        elif pos[0]=="I":
+            item=self.inventory[pos[1][0]][pos[1][1]]
+            self.inventory[pos[1][0]][pos[1][1]]=None
+        if pos not in self.oldInventoryPositions:
+            self.oldInventoryPositions.append(pos)
+        return item
+        
+    def findExistingItemStacks(self,ID,searchHotbar=True,searchInventory=True):#finds existing item stacks and free spaces
+        
+        #[which array,position in array,amount]
+        existingSpaces=[]
+        freeSpaces=[]
+        
+        if searchHotbar:#search hotbar
+            for i in range(10):
+                if self.hotbar[i]==None:
+                    freeSpaces.append(["H",i,int(itemData[ID][4][10])])
+                elif self.hotbar[i].ID==ID:
+                    available=int(itemData[ID][4][10])-self.hotbar[i].amnt
+                    if available>0:
+                        existingSpaces.append(["H",i,available])
+        
+        if searchInventory:#search inventory
+            for j in range(4):
+                for i in range(10):
+                    if self.inventory[i][j]==None:
+                        freeSpaces.append(["I",(i,j),int(itemData[ID][4][10])])
+                    elif self.inventory[i][j].ID==ID:
+                        available=int(itemData[ID][4][10])-self.inventory[i][j].amnt
+                        if available>0:
+                            existingSpaces.append(["I",(i,j),available])
+        return [existingSpaces,freeSpaces]
+    def renderHotbar(self,full=False):
+        self.hotbarImage.fill((255,0,255))
+        for i in range(10):
+            self.hotbarImage.blit(miscGuiImages[0],(48*i,0))
+            if clientPlayer.hotbar[i]!=None:
+                self.hotbarImage.blit(itemImages[self.hotbar[i].ID],(48*i,0))
+                if self.hotbar[i].amnt>1:
+                    self.hotbarImage.blit(outlineText(str(self.hotbar[i].amnt),(255,255,255),SMALLFONT),(24+48*i,30))
+    def updateInventoryOldSlots(self):
+        for data in self.oldInventoryPositions:
+            if data[0]=="H":
+                item=self.hotbar[data[1]]
+                self.hotbarImage.blit(miscGuiImages[0],(data[1]*48,0))
+                if item!=None:
+                    self.hotbarImage.blit(itemImages[item.ID],(48*data[1],0))
+                    if item.amnt>1:
+                        self.hotbarImage.blit(outlineText(str(item.amnt),(255,255,255),SMALLFONT),(24+48*data[1],30))
+            if data[0]=="I":
+                item=self.inventory[data[1][0]][data[1][1]]
+                self.inventoryImage.blit(miscGuiImages[0],(data[1][0]*48,data[1][1]*48))
+                if item!=None:
+                    self.inventoryImage.blit(itemImages[item.ID],(data[1][0]*48,data[1][1]*48))
+                    if item.amnt>1:
+                        self.inventoryImage.blit(outlineText(str(item.amnt),(255,255,255),SMALLFONT),(24+48*data[1][0],30+48*data[1][1]))
+        self.oldInventoryPositions=[]
+    def renderInventory(self):
+        self.inventoryImage.fill((255,0,255))
+        pygame.draw.rect(self.inventoryImage,(150,150,150),Rect(5,5,472,184),0)
+        for j in range(4):
+            for i in range(10):
+                self.inventoryImage.blit(miscGuiImages[0],(48*i,48*j))
+                if clientPlayer.inventory[i][j]!=None:
+                    self.inventoryImage.blit(itemImages[clientPlayer.inventory[i][j].ID],(48*i,48*j))
+                    if self.inventory[i][j].amnt>1:
+                        self.inventoryImage.blit(outlineText(str(self.inventory[i][j].amnt),(255,255,255),SMALLFONT),(24+48*i,30+48*j))
     def draw(self):#draw player to screen
         if self.alive:
             screen.blit(self.sprites[self.animationFrame],(screenW/2-20,screenH/2-33))
@@ -723,7 +985,7 @@ class Player():#stores all info about a player
                 item=self.hotbar[self.hotbarIndex]
                 img=rot_center(itemImages[item.ID].copy(),self.holdAngle*180/math.pi)
                 if self.direction==1:offsetx=10
-                else:offsetx=-10
+                else:offsetx=-10;img=pygame.transform.flip(img,True,False)
                 screen.blit(img,(screenW/2-img.get_width()/2+offsetx,screenH/2-img.get_height()/2))
             elif self.itemSwing:
                 item=self.hotbar[self.hotbarIndex]
@@ -758,17 +1020,18 @@ class Player():#stores all info about a player
                 if self.direction==1:offsety=-math.sin(angle2+0.2)*img.get_height()*2/3-img.get_height()/4
                 else:offsety=-math.sin(angle2+0.3)*img.get_width()*2/3+img.get_height()/2
                 screen.blit(rot_center(img,angle1),(screenW/2-20+offsetx,screenH/2-33+offsety))  
-        if hitboxDebug:#show hitbox
-            pygame.draw.rect(screen,(255,0,0),self.rect,1)
+        if HITBOXES:#show hitbox
+            pygame.draw.rect(screen,(255,0,0),Rect(screenW/2-playerWidth/2,screenH/2-playerHeight/2,playerWidth,playerHeight),1)
             
 class Particle():
-    def __init__(self,pos,colour,life=75,magnitude=2,size=5,angle=None,spread=math.pi/4,GRAV=0.2,vel=None):
+    def __init__(self,pos,colour,life=75,magnitude=2,size=5,angle=None,spread=math.pi/4,GRAV=0.2,vel=None,outline=True):
         self.pos=pos 
         self.life=life+random.random()*life/10-life/20#how long it lasts for (randomized slightly)
         self.initLife=self.life
         self.colour=colour
         self.size=size+random.random()*size/10-size/20#how large it will be (randomized slightly)
         self.initSize=self.size
+        self.outline=outline
         if vel==None:
             if angle==None:
                 angle=random.random()*math.pi*2-math.pi#random angle
@@ -787,13 +1050,13 @@ class Particle():
         self.size=self.initSize*self.life/self.initLife#change size based on life and initial size
         if self.life<=0:#if life<=0 remove the particle
             particles.remove(self)
-            
     def draw(self):
         rect=Rect(self.pos[0]-self.size/2,self.pos[1]-self.size/2,self.size,self.size)
         pygame.draw.rect(screen,self.colour,rect,0)#draw 2 rects for each particle (fill and outine)
-        pygame.draw.rect(screen,(0,0,0),rect,1)
+        if self.outline:
+            pygame.draw.rect(screen,(0,0,0),rect,1)
 class Projectile():
-    def __init__(self,pos,vel,Type,ID,source,damage,knockback,crit,bounceNum,trail,maxLife=500,GRAVITY=0.1):
+    def __init__(self,pos,vel,Type,ID,source,damage,knockback,crit,bounceNum,trail,maxLife=500,GRAVITY=0.1,DRAG=0.99):
         global projectiles
         self.pos=pos
         self.vel=vel
@@ -811,22 +1074,27 @@ class Projectile():
         self.rect=Rect(self.pos[0]-self.size/2,self.pos[1]-self.size/2,self.size,self.size)
         self.life=int(maxLife)
         self.GRAVITY=GRAVITY
+        self.DRAG=DRAG
         projectiles.append(self)
     def update(self):
         self.life-=1
         if self.life<=0:
             projectiles.remove(self)
             return
-        self.vel=(self.vel[0]*0.99,self.vel[1]*0.99+self.GRAVITY)
+        self.vel=(self.vel[0]*self.DRAG,self.vel[1]*self.DRAG+self.GRAVITY)
         self.pos=(self.pos[0]+self.vel[0],self.pos[1]+self.vel[1])
         self.rect.left=self.pos[0]-self.size/2#updating rect
         self.rect.top=self.pos[1]-self.size/2
         self.blockpos=(math.floor(self.pos[1]//BLOCKSIZE),math.floor(self.pos[0]//BLOCKSIZE))
         if self.trail!=None:
             if self.trailTick<=0:
-                self.trailTick=5
                 if self.trail=="arrow":
-                    Particle((self.pos[0]-clientPlayer.pos[0]+screenW/2+self.size/2,self.pos[1]-clientPlayer.pos[1]+screenH/2+self.size/2),(90,90,90),size=7,magnitude=0,GRAV=0)
+                    self.trailTick=5
+                    if PARTICLES:
+                        Particle((self.pos[0]-clientPlayer.pos[0]+screenW/2+self.size/2,self.pos[1]-clientPlayer.pos[1]+screenH/2+self.size/2),(90,90,90),size=7,magnitude=0,GRAV=0)
+                #elif self.trail=="bullet":
+                    #self.trailTick=1
+                    #Particle((self.pos[0]-clientPlayer.pos[0]+screenW/2+self.size/2,self.pos[1]-clientPlayer.pos[1]+screenH/2+self.size/2),(235,20,20),size=6,magnitude=0,GRAV=0,outline=False)
             else:
                 self.trailTick-=1
         if self.vel[1]>0:
@@ -846,6 +1114,7 @@ class Projectile():
                         if val not in platformBlocks:
                             blockrect=Rect(BLOCKSIZE*(self.blockpos[1]+j),BLOCKSIZE*(self.blockpos[0]+i),BLOCKSIZE,BLOCKSIZE)    
                             if blockrect.colliderect(self.rect):
+                                blockHitVal=int(val)
                                 deltaX = self.pos[0]-blockrect.centerx
                                 deltaY = self.pos[1]-blockrect.centery
                                 if abs(deltaX) > abs(deltaY):
@@ -871,17 +1140,33 @@ class Projectile():
                 self.vel=(-self.vel[0],-self.vel[1])
             if self.bounceNum<0:
                 projectiles.remove(self)
+                if PARTICLES:
+                    colour=getBlockAverageColour(blockHitVal)
+                    for i in range(int(3*PARTICLEDENSITY)):
+                        Particle((self.pos[0]-clientPlayer.pos[0]+screenW/2,self.pos[1]-clientPlayer.pos[1]+screenH/2),colour,GRAV=0,size=8)
+                if SFX:
+                    if self.type=="Bullet":
+                        sounds[18].play()
+                    else:
+                        sounds[random.randint(3,5)].play()
                 return
         for enemy in enemies:
             if enemy.rect.colliderect(self.rect):
-                enemy.damage(self.damage,crit=self.crit)
+                if enemy.pos[0]>clientPlayer.pos[0]:direction=1
+                else:direction=-1
+                enemy.damage(self.damage,crit=self.crit,knockBack=self.knockback,direction=direction)
                 projectiles.remove(self)
                 return
     def draw(self):
-        angle=math.atan2(self.vel[1],-self.vel[0])*180/math.pi-90
-        surf=projectileImages[self.ID].copy()
-        surf=rot_center(surf,angle)
-        screen.blit(surf,(self.rect.left-clientPlayer.pos[0]+screenW/2,self.rect.top-clientPlayer.pos[1]+screenH/2))
+        if self.type=="Arrow":
+            angle=math.atan2(self.vel[1],-self.vel[0])*180/math.pi-90
+            surf=projectileImages[self.ID].copy()
+            surf=rot_center(surf,angle)
+            screen.blit(surf,(self.rect.left-clientPlayer.pos[0]+screenW/2,self.rect.top-clientPlayer.pos[1]+screenH/2))
+        elif self.type=="Bullet":
+            pygame.draw.circle(screen,(60,60,60),(int(self.rect.centerx-clientPlayer.pos[0]+screenW/2),int(self.rect.centery-clientPlayer.pos[1]+screenH/2)),3,0)
+        if HITBOXES:
+            pygame.draw.rect(screen,(255,0,0),Rect(self.rect.left-clientPlayer.pos[0]+screenW/2,self.rect.top-clientPlayer.pos[1]+screenH/2,self.rect.width,self.rect.height),1)
 def updateParticles():
     for particle in particles:
         particle.update()
@@ -889,6 +1174,14 @@ def updateParticles():
 def drawParticles():
     for particle in particles:
         particle.draw()
+        
+def updatePhysicsItems():
+    for physicsItem in physicsItems:
+        physicsItem.update()
+        
+def drawPhysicsItems():
+    for physicsItem in physicsItems:
+        physicsItem.draw()
         
 def getMaskIndex(name):#returns a random mask index for the given type
     if name=="top_mid":return random.randint(1,3)
@@ -1023,7 +1316,7 @@ def updateSurface(i,j,affectOthers=True):
             backimg.blit(tilemasks[wallTileMaskData[tile[0]][tile[1]]], (0, 0), None, pygame.BLEND_RGBA_MULT)#blit the mask onto the wall texture using a multiply blend flag
             mainSurf.blit(backimg, (tile[0]*BLOCKSIZE, tile[1]*BLOCKSIZE))#blit the masked wall surf to the main surf
             
-def playHitSfx(tile):
+def playHitSfx(tile,volume=1):
     if tile ==0 or tile==2 or tile==4 or tile==8 or tile==9 or tile==10 or tile==13:
         sounds[random.randint(3,5)].play()
     elif tile==1 or tile==3 or tile==6 or tile==7:
@@ -1101,16 +1394,30 @@ def generateTerrain(genType):
                         if mapData[i][j-1][0]==-1 and bval==int(biomeTileVals[biome][0][1]):bval=int(biomeTileVals[biome][0][0]);wval=int(biomeTileVals[biome][1][0])
                     else:bval=-1
                 mapData[i].append([bval,wval])
-    print("Spawning ores...")
-    for i in range(int(MAPSIZEX*MAPSIZEY/1200)):
-        createVein(random.randint(0,MAPSIZEX-1),random.randint(70,500),7,random.randint(2,4))
-    for i in range(int(MAPSIZEX*MAPSIZEY/1200)):
-        createVein(random.randint(0,MAPSIZEX-1),random.randint(70,500),6,random.randint(2,4))
-    print("Growing Trees...")
-    for i in range(int(MAPSIZEX/5)):
-        if random.randint(1,2)==1:
-            createTree(i*5,0,random.randint(5,15))
+        print("Spawning ores...")
+        for i in range(int(MAPSIZEX*MAPSIZEY/1200)):
+            createVein(random.randint(0,MAPSIZEX-1),random.randint(70,500),7,random.randint(2,4))
+        for i in range(int(MAPSIZEX*MAPSIZEY/1200)):
+            createVein(random.randint(0,MAPSIZEX-1),random.randint(70,500),6,random.randint(2,4))
+        print("Growing Trees...")
+        for i in range(int(MAPSIZEX/5)):
+            if random.randint(1,2)==1:
+                createTree(i*5,0,random.randint(5,15))
+    elif genType=="superflat":
+        mapData=[]
+        backgroundID=3
+        for i in range(MAPSIZEX):
+            mapData.append([])
+            for j in range(MAPSIZEY):
+                if j>100:
+                    bval=1
+                    wval=1
+                else:
+                    bval=-1
+                    wval=-1
+                mapData[i].append([bval,wval])
     makeSpawnPoint()
+    
     print("Generation complete!")
 def fadeBackground(ID):
     global fadeBackgroundID, fadeBack, fadeFloat
@@ -1248,10 +1555,12 @@ class World():
         self.size=size
         self.playTime=0
         self.spawnPoint=(0,0)
+        
 class Item():
-    def __init__(self,ID):
+    def __init__(self,ID,amnt=1,prefixData=None):
         self.name=str(itemData[ID][0])
         self.ID=ID
+        self.amnt=amnt
         self.tags=list(itemData[ID][2])
         if itemData[ID][4][0]!=None:self.attackDamage=int(itemData[ID][4][0])
         if itemData[ID][4][1]!=None:self.attackSpeed=int(itemData[ID][4][1])
@@ -1262,38 +1571,40 @@ class Item():
         if itemData[ID][4][6]!=None:self.knockback=int(itemData[ID][4][6])
         if itemData[ID][4][7]!=None:self.tier=int(itemData[ID][4][7])
         self.description=str(itemData[ID][5])
-        if len(itemData[ID][3])>0:
+        if len(itemData[ID][3])>0 and random.random()>0.1:
             self.hasPrefix=True
-            self.prefixData=getItemPrefix(itemData[ID][3][random.randint(0,len(itemData[ID][3])-1)])
+            if prefixData==None:
+                self.prefixData=getItemPrefix(itemData[ID][3][random.randint(0,len(itemData[ID][3])-1)])
+            else:self.prefixData=prefixData
             if self.prefixData[0]=="universal":
                 self.attackDamage*=(1+self.prefixData[1][1])
-                self.critStrikeChance*=(1+self.prefixData[1][2])
+                self.critStrikeChance+=self.prefixData[1][2]
                 self.knockback*=(1+self.prefixData[1][3])
                 self.tier+=self.prefixData[1][4]
             elif self.prefixData[0]=="common":
                 self.attackDamage*=(1+self.prefixData[1][1])
                 self.attackSpeed*=(1-self.prefixData[1][2])
-                self.critStrikeChance*=(1+self.prefixData[1][3])
+                self.critStrikeChance+=self.prefixData[1][3]
                 self.knockback*=(1+self.prefixData[1][4])
                 self.tier+=self.prefixData[1][5]
             elif self.prefixData[0]=="melee":
                 self.attackDamage*=(1+self.prefixData[1][1])
                 self.attackSpeed*=(1-self.prefixData[1][2])
-                self.critStrikeChance*=(1+self.prefixData[1][3])
+                self.critStrikeChance+=self.prefixData[1][3]
                 self.size*=(1+self.prefixData[1][4])
                 self.knockback*=(1+self.prefixData[1][5])
                 self.tier+=self.prefixData[1][6]
             elif self.prefixData[0]=="ranged":
                 self.attackDamage*=(1+self.prefixData[1][1])
                 self.attackSpeed*=(1-self.prefixData[1][2])
-                self.critStrikeChance*=(1+self.prefixData[1][3])
+                self.critStrikeChance+=self.prefixData[1][3]
                 self.velocity*=(1+self.prefixData[1][4])
                 self.knockback*=(1+self.prefixData[1][5])
                 self.tier+=self.prefixData[1][6]
             elif self.prefixData[0]=="magic":
                 self.attackDamage*=(1+self.prefixData[1][1])
                 self.attackSpeed*=(1-self.prefixData[1][2])
-                self.critStrikeChance*=(1+self.prefixData[1][3])
+                self.critStrikeChance+=self.prefixData[1][3]
                 self.manaCost*=(1+self.prefixData[1][4])
                 self.knockback*=(1+self.prefixData[1][5])
                 self.tier+=self.prefixData[1][6]
@@ -1305,6 +1616,113 @@ class Item():
             return self.prefixData[1][0]+" "+self.name
         else:
             return self.name
+class PhysicsItem():
+    def __init__(self,pos,ID,amnt=1,pickupDelay=100):
+        global physicsItems
+        self.pos=pos
+        angle=random.random()*math.pi*2-math.pi
+        initSpeed=random.random()*3+1
+        self.vel=(math.cos(angle),math.sin(angle))
+        self.ID=ID
+        self.amnt=amnt
+        self.itemScale=1.25
+        self.renderImage()
+        self.tiltAngle=0
+        self.despawnCheckTick=10000
+        self.despawnTick=0
+        self.pickupDelay=pickupDelay
+        self.grounded=False
+        self.rect=Rect(pos[0]-BLOCKSIZE/2*self.itemScale,pos[1]-BLOCKSIZE/2*self.itemScale*0.8,BLOCKSIZE*self.itemScale*0.8,BLOCKSIZE*self.itemScale)
+        physicsItems.append(self)
+    def renderImage(self):
+        self.image=pygame.transform.scale(itemImages[self.ID].copy(),(int(BLOCKSIZE*1.414*self.itemScale),int(BLOCKSIZE*1.414*self.itemScale)))
+        self.spacing=int((self.image.get_width()-BLOCKSIZE)/2)
+    def checkDespawn(self):
+        if self.pos[0]<clientPlayer.pos[0]-screenW/2:physicsItems.remove(self)
+        elif self.pos[0]>clientPlayer.pos[0]+screenW/2:physicsItems.remove(self)
+        elif self.pos[1]<clientPlayer.pos[1]-screenH/2:physicsItems.remove(self)
+        elif self.pos[1]>clientPlayer.pos[1]+screenH/2:physicsItems.remove(self)
+    def update(self):
+        if self.despawnCheckTick<=0:
+            if self.despawnTick<=0:
+                self.checkDespawn()
+            else:self.despawnTick-=1
+        else:self.despawnCheckTick-=1
+        
+        if not self.grounded:
+            self.vel=(self.vel[0],self.vel[1]+GRAVITY)
+            
+        self.vel=(self.vel[0]*0.95,self.vel[1]*0.95)
+        self.pos=(self.pos[0]+self.vel[0],self.pos[1]+self.vel[1])
+        self.rect.center=tuple(self.pos)
+        self.blockpos=(math.floor(self.pos[1]//BLOCKSIZE),math.floor(self.pos[0]//BLOCKSIZE))
+        self.grounded=False
+        collide=True
+        
+        if self.ID not in clientPlayer.unPickupableItems:
+            if self.pickupDelay<=0:
+                if abs(self.pos[0]-clientPlayer.pos[0])<BLOCKSIZE*4:
+                    if abs(self.pos[1]-clientPlayer.pos[1])<BLOCKSIZE*4:
+                        collide=False
+                        angle=math.atan2(clientPlayer.pos[1]-self.pos[1],clientPlayer.pos[0]-self.pos[0])
+                        self.vel=(self.vel[0]+math.cos(angle),self.vel[1]+math.sin(angle))
+                        if clientPlayer.rect.colliderect(self.rect):
+                            physicsItems.remove(self)
+                            itemData=clientPlayer.giveItem(self.ID,amnt=self.amnt)
+                            
+                            if itemData[0]:
+                                if SFX:
+                                    if self.ID>=21 and self.ID<=24:
+                                        sounds[23].play()
+                                    else:
+                                        sounds[19].play()
+                                return
+                            else:
+                                PhysicsItem(clientPlayer.pos,self.ID,amnt=itemData[1])
+                                return
+            else:
+                self.pickupDelay-=1
+        if collide:
+            for j in range(-2,3):
+                for i in range(-2,3):
+                    try:
+                        val=mapData[self.blockpos[1]+j][self.blockpos[0]+i][0]
+                        if val not in uncollidableBlocks:
+                            blockrect=Rect(BLOCKSIZE*(self.blockpos[1]+j),BLOCKSIZE*(self.blockpos[0]+i),BLOCKSIZE,BLOCKSIZE) 
+                            if blockrect.colliderect(self.rect):
+                                deltaX = self.pos[0]-blockrect.centerx
+                                deltaY = self.pos[1]-blockrect.centery
+                                if abs(deltaX) > abs(deltaY):
+                                    if deltaX > 0:
+                                        self.pos=(blockrect.right+self.rect.width/2,self.pos[1])#move item right
+                                        self.vel=(0,self.vel[1])#stop item horizontally
+                                    else:
+                                        self.pos=(blockrect.left-self.rect.width/2,self.pos[1])#move item left
+                                        self.vel=(0,self.vel[1])#stop item horizontally
+                                else:
+                                    if deltaY > 0:
+                                        if self.vel[1]<0:
+                                            self.pos=(self.pos[0],blockrect.bottom+self.rect.height/2)#move item down
+                                            self.vel=(self.vel[0],0)#stop item vertically
+                                    else:
+                                        if self.vel[1]>0:
+                                            self.pos=(self.pos[0],blockrect.top-self.rect.height/2+1)#move item up
+                                            self.vel=(self.vel[0],0)#stop item vertically
+                                            self.grounded=True
+                    except:None
+    def draw(self):
+        newAngle=-int(self.vel[0]*10)
+        if newAngle!=self.tiltAngle:
+            self.tiltAngle=newAngle
+            img=self.image.copy()
+            img=rot_center(img,self.tiltAngle)
+            screen.blit(img,(self.rect.left-clientPlayer.pos[0]+screenW/2-self.spacing/2,self.rect.top-clientPlayer.pos[1]+screenH/2-self.spacing/2))
+        else:
+            screen.blit(self.image,(self.rect.left-clientPlayer.pos[0]+screenW/2-self.spacing/2,self.rect.top-clientPlayer.pos[1]+screenH/2-self.spacing/2))
+        if HITBOXES:
+            pygame.draw.rect(screen,(255,0,0),Rect(self.rect.left-clientPlayer.pos[0]+screenW/2,self.rect.top-clientPlayer.pos[1]+screenH/2,self.rect.width,self.rect.height),1)
+        
+            
 def Exit():
     Save()
     pygame.quit()
@@ -1370,7 +1788,8 @@ def createTree(i,j,height):
     mapData[i+1][j+1][0]=int(block2)
     
 def loadConfig():#get all settings from config file
-    global MAPSIZEX, MAPSIZEY, GRAVITY, screenW, screenH, RUNFULLSCREEN, PARTICLES, PARTICLEDENSITY, MUSIC, SFX, CREATIVE, BACKGROUND, PARALLAXAMNT, PASSIVE, MAXENEMYSPAWNS, FANCYTEXT
+    global MAPSIZEX, MAPSIZEY, GRAVITY, screenW, screenH, RUNFULLSCREEN, PARTICLES,PARTICLEDENSITY, MUSIC, SFX, CREATIVE, BACKGROUND, PARALLAXAMNT, PASSIVE, MAXENEMYSPAWNS,FANCYTEXT, HITBOXES, SPLASHSCREEN
+    
     config=open("CONFIG.txt","r")
     configDataStr=config.readlines()
     configData=[]
@@ -1393,6 +1812,8 @@ def loadConfig():#get all settings from config file
     PASSIVE=bool(int(configData[11]))
     MAXENEMYSPAWNS=int(configData[12])
     FANCYTEXT=bool(int(configData[13]))
+    HITBOXES=bool(int(configData[14]))
+    SPLASHSCREEN=bool(int(configData[15]))
 
 def changeBackground():#check if player has moved biome and change background
     global backgroundTick
@@ -1426,9 +1847,9 @@ def renderHandText():
     item=clientPlayer.hotbar[clientPlayer.hotbarIndex]
     if item!=None:
         colour=getTierColour(item.tier)
-        handText=outlineText("Hand: "+item.getName(),colour,inventoryFont)
+        handText=outlineText(item.getName(),colour,DEFAULTFONT)
     else:
-        handText=outlineText("Hand: ",(255,255,255),inventoryFont)
+        handText=outlineText("",(255,255,255),DEFAULTFONT)
         
 def outlineText(string,colour,font,outlineColour=(0,0,0)):
     text1=font.render(string,False,colour)
@@ -1444,78 +1865,134 @@ def outlineText(string,colour,font,outlineColour=(0,0,0)):
         surf.blit(text1,(1,1))
         return surf
     else:return text1
-    
-def renderHpText():
-    global hpText
-    hpText=outlineText("HP: "+str(clientPlayer.HP),(255,0,0),inventoryFont)
-def renderStatsText():
-    global statsText
-    statsText=pygame.Surface((340,200))
-    statsText.fill((255,0,255))
-    statsText.set_colorkey((255,0,255))
-    item=clientPlayer.hotbar[clientPlayer.hotbarIndex]
-    stats=[]
-    if "weapon" in item.tags:
-        stats.append(outlineText(str(int(item.attackDamage))+" damage",(255,255,255),inventoryFont))
-        stats.append(outlineText(str(int(item.critStrikeChance*100))+"% critical strike chance",(255,255,255),inventoryFont))
-        stats.append(outlineText(getSpeedText(item.attackSpeed),(255,255,255),inventoryFont))
-        stats.append(outlineText(getKnockbackText(item.knockback),(255,255,255),inventoryFont))
-    if "block" in item.tags:
-        stats.append(outlineText("Can be placed.",(255,255,255),inventoryFont))
-    if item.description!="None":
-        stats.append(outlineText(item.description,(255,255,255),inventoryFont))
-    if item.hasPrefix:
-        if item.prefixData[1][1]!=0:
-            if item.prefixData[1][1]>0:colour=tuple(goodColour)
-            else:colour=tuple(badColour)
-            stats.append(outlineText(addPlus(str(int(item.prefixData[1][1]*100)))+"% damage",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        if item.prefixData[0]!="universal":
-            if item.prefixData[1][2]!=0:
-                if item.prefixData[1][2]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][2]*100)))+"% speed",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        else:
-            if item.prefixData[1][2]!=0:
-                if item.prefixData[1][2]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][2]*100)))+"% critical strike chance",colour,inventoryFont,outlineColour=darkenCol(colour)))
-            if item.prefixData[1][3]!=0:
-                if item.prefixData[1][3]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][3]*100)))+"% knockback",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        if item.prefixData[0]!="universal":
-            if item.prefixData[1][3]!=0:
-                if item.prefixData[1][3]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][3]*100)))+"% critical strike chance",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        if item.prefixData[0]=="common":
-            if item.prefixData[1][4]!=0:
-                if item.prefixData[1][4]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% knockback",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        if item.prefixData[0]=="melee":
-            if item.prefixData[1][4]!=0:
-                if item.prefixData[1][4]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% size",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        elif item.prefixData[0]=="ranged":
-            if item.prefixData[1][4]!=0:
-                if item.prefixData[1][4]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% projectile velocity",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        elif item.prefixData[0]=="magic":
-            if item.prefixData[1][4]!=0:
-                if item.prefixData[1][4]<0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% size",colour,inventoryFont,outlineColour=darkenCol(colour)))
-        if item.prefixData[0]=="melee" or item.prefixData[0]=="ranged" or item.prefixData[0]=="magic":
-            if item.prefixData[1][5]!=0:
-                if item.prefixData[1][5]>0:colour=tuple(goodColour)
-                else:colour=tuple(badColour)
-                stats.append(outlineText(addPlus(str(int(item.prefixData[1][5]*100)))+"% knockback",colour,inventoryFont,outlineColour=darkenCol(colour)))
+
+def runSplashScreen():
+    global particles
+    done=False
+    age=0
+    text=outlineText("A Fergus Griggs game...",(255,255,255),LARGEFONT)
+    blackSurf=pygame.Surface((screenW,screenH))
+    frame=0
+    xpos=-30
+    tick=0
+    while not done:
+        screen.blit(backsurfs[1],(0,0))
+        if age<50:
+            blackSurf.set_alpha(255)
+        elif age<150 and age>50:
+            alpha=(150-age)/150*255
+            blackSurf.set_alpha(alpha)
+        elif age>150 and age<450:
+            updateParticles()
+            if tick<=0:
+                tick=10
+                if SFX:
+                    sounds[random.randint(20,22)].play()
+            else:tick-=1
+            if frame<18:
+                frame+=1
+            else:
+                frame=6
+            if PARTICLES:
+                Particle((xpos+playerWidth,screenH*3/4+playerHeight*1.15),(255,255,255),GRAV=-0.1,size=10,angle=math.pi,spread=math.pi,magnitude=1)
+            xpos+=screenW/290
+        elif age>450 and age<600:
+            updateParticles()
+            alpha=(age-450)/150*255
+            blackSurf.set_alpha(alpha)
+        elif age>650:
+            done=True
+        drawParticles()
+        screen.blit(clientPlayer.sprites[frame],(xpos,screenH*3/4))
+        screen.blit(text,(screenW/2-text.get_width()/2,screenH/2))
+        screen.blit(blackSurf,(0,0))
+        age+=1
+        for event in pygame.event.get():
+            if event.type==QUIT:
+                Exit()
+            if event.type==KEYDOWN:
+                done=True
+        pygame.display.flip()
+        clock.tick(60)
+    particles=[]
+def renderStatsText(pos):
+    global statsText, lastHoveredItem
+
+    if pos[0]=="H":
+        item=clientPlayer.hotbar[pos[1]]
+    elif pos[0]=="I":
+        item=clientPlayer.inventory[pos[1][0]][pos[1][1]]
+    if item!=None:
+        if item!=lastHoveredItem: 
+            lastHoveredItem=item
+            statsText=pygame.Surface((340,200))
+            statsText.fill((255,0,255))
+            statsText.set_colorkey((255,0,255))
             
-    for i in range(len(stats)):
-        statsText.blit(stats[i],(0,i*20))
+            stats=[]
+            stats.append(outlineText(item.getName(),getTierColour(item.tier),DEFAULTFONT))
+            if "weapon" in item.tags or "tool" in item.tags:
+                stats.append(outlineText(str(int(item.attackDamage))+" damage",(255,255,255),DEFAULTFONT))
+                stats.append(outlineText(str(int(item.critStrikeChance*100))+"% critical strike chance",(255,255,255),DEFAULTFONT))
+                stats.append(outlineText(getSpeedText(item.attackSpeed),(255,255,255),DEFAULTFONT))
+                stats.append(outlineText(getKnockbackText(item.knockback),(255,255,255),DEFAULTFONT))
+            elif "block" in item.tags:
+                stats.append(outlineText("Can be placed.",(255,255,255),DEFAULTFONT))
+            if item.description!="None":
+                stats.append(outlineText(item.description,(255,255,255),DEFAULTFONT))
+            if item.hasPrefix:
+                if item.prefixData[1][1]!=0:
+                    if item.prefixData[1][1]>0:colour=tuple(goodColour)
+                    else:colour=tuple(badColour)
+                    stats.append(outlineText(addPlus(str(int(item.prefixData[1][1]*100)))+"% damage",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                if item.prefixData[0]!="universal":
+                    if item.prefixData[1][2]!=0:
+                        if item.prefixData[1][2]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][2]*100)))+"% speed",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                else:
+                    if item.prefixData[1][2]!=0:
+                        if item.prefixData[1][2]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][2]*100)))+"% critical strike chance",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                    if item.prefixData[1][3]!=0:
+                        if item.prefixData[1][3]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][3]*100)))+"% knockback",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                if item.prefixData[0]!="universal":
+                    if item.prefixData[1][3]!=0:
+                        if item.prefixData[1][3]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][3]*100)))+"% critical strike chance",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                if item.prefixData[0]=="common":
+                    if item.prefixData[1][4]!=0:
+                        if item.prefixData[1][4]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% knockback",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                if item.prefixData[0]=="melee":
+                    if item.prefixData[1][4]!=0:
+                        if item.prefixData[1][4]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% size",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                elif item.prefixData[0]=="ranged":
+                    if item.prefixData[1][4]!=0:
+                        if item.prefixData[1][4]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% projectile velocity",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                elif item.prefixData[0]=="magic":
+                    if item.prefixData[1][4]!=0:
+                        if item.prefixData[1][4]<0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][4]*100)))+"% size",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+                if item.prefixData[0]=="melee" or item.prefixData[0]=="ranged" or item.prefixData[0]=="magic":
+                    if item.prefixData[1][5]!=0:
+                        if item.prefixData[1][5]>0:colour=tuple(goodColour)
+                        else:colour=tuple(badColour)
+                        stats.append(outlineText(addPlus(str(int(item.prefixData[1][5]*100)))+"% knockback",colour,DEFAULTFONT,outlineColour=darkenCol(colour)))
+            for i in range(len(stats)):
+                statsText.blit(stats[i],(0,i*15))
+        return True
+    return False
 def getNeighborCount(i,j,tile=0):#used to work out if a block can be placed at a position based on neighbors
     if CREATIVE:return 1
     neighborCount=0
@@ -1538,8 +2015,8 @@ def drawMessages():
         screen.blit(messages[i][0],(10,screenH-25-i*20))
 def message(text,col,life=1000):
     global messages
-    text1=inventoryFont.render(text,False,col)
-    text2=inventoryFont.render(text,False,(0,0,0))
+    text1=DEFAULTFONT.render(text,False,col)
+    text2=DEFAULTFONT.render(text,False,(0,0,0))
     surf=pygame.Surface((text1.get_width()+2,text1.get_height()+2))
     surf.fill((255,0,255))
     surf.set_colorkey((255,0,255))
@@ -1592,7 +2069,7 @@ def checkEnemySpawn():
     if not PASSIVE:
         if enemySpawnTick<=0:
             enemySpawnTick=200
-            if len(enemies)<MAXENEMYSPAWNS:
+            if len(enemies)<MAXENEMYSPAWNS and random.randint(1,5)==1:#reduce enemy spawns
                 spawnEnemy()
         else:enemySpawnTick-=1
 def spawnEnemy(pos=None,ID=None):
@@ -1679,8 +2156,8 @@ def damageNumber(pos,val,crit=False,colour=None):
         else:
             colour=(207,127,63)
     
-    t1=inventoryFont.render(str(int(val)),False,colour)
-    t2=inventoryFont.render(str(int(val)),False,(colour[0]*0.8,colour[1]*0.8,colour[2]*0.8))
+    t1=DEFAULTFONT.render(str(int(val)),False,colour)
+    t2=DEFAULTFONT.render(str(int(val)),False,(colour[0]*0.8,colour[1]*0.8,colour[2]*0.8))
     
     width=t1.get_width()+2
     height=t1.get_height()+2
@@ -1716,7 +2193,7 @@ def drawDamageNumbers():
         surf=damageNumber[2].copy()
         surf=rot_center(surf,-damageNumber[1][0]*35)
         screen.blit(surf,(damageNumber[0][0]-surf.get_width()/2,damageNumber[0][1]-surf.get_height()/2))
-        
+
 def rot_center(image, angle):
     orig_rect = image.get_rect()
     rot_image = pygame.transform.rotate(image, angle)
@@ -1731,18 +2208,20 @@ def updateProjectiles():
 def drawProjectiles():
     for projectile in projectiles:
         projectile.draw()
-def fireProjectile(pos,angle,weaponDamage,ID,source,crit,damageModifier=1,knockbackModifier=1,velocityModifier=1):
+def fireProjectile(pos,angle,weaponDamage,weaponKnockback,weaponVel,ID,source,crit):
     
-    angle+=(random.random()-0.5)/10
+    angle+=(random.random()-0.5)/20
     
-    damage=(weaponDamage+int(projectileData[ID][2]))*damageModifier
+    damage=int(weaponDamage)+int(projectileData[ID][2])
     
-    speed=int(projectileData[ID][3])*velocityModifier
+    speed=int(weaponVel)+int(projectileData[ID][3])
     vel=(math.cos(angle)*speed,math.sin(angle)*speed)
     
-    knockback=int(projectileData[ID][4])*knockbackModifier
+    knockback=int(weaponKnockback)+int(projectileData[ID][4])
+    if SFX:
+        sounds[int(projectileData[ID][10])].play()
     
-    Projectile(pos,vel,str(projectileData[ID][1]),ID,source,damage,knockback,crit,int(projectileData[ID][5]),str(projectileData[ID][7]))
+    Projectile(pos,vel,str(projectileData[ID][1]),ID,source,damage,knockback,crit,int(projectileData[ID][5]),str(projectileData[ID][7]),GRAVITY=float(projectileData[ID][8]),DRAG=float(projectileData[ID][9]))
 def checkEnemyHover():
     mpos=(m[0]+clientPlayer.pos[0]-screenW/2,m[1]+clientPlayer.pos[1]-screenH/2)
     found=0
@@ -1750,8 +2229,8 @@ def checkEnemyHover():
         if not found:
             if enemy.rect.collidepoint(mpos):
                 found=1
-                text1=enemyFont.render(enemy.name + " " + str(math.ceil(enemy.HP)) + "/" + str(enemy.maxHP),True,(255,255,255))
-                text2=enemyFont.render(enemy.name + " " + str(math.ceil(enemy.HP)) + "/" + str(enemy.maxHP),True,(0,0,0))
+                text1=DEFAULTFONT.render(enemy.name + " " + str(math.ceil(enemy.HP)) + "/" + str(enemy.maxHP),True,(255,255,255))
+                text2=DEFAULTFONT.render(enemy.name + " " + str(math.ceil(enemy.HP)) + "/" + str(enemy.maxHP),True,(0,0,0))
                 
                 screen.blit(text2,(m[0]-text2.get_width()/2,m[1]-39))
                 screen.blit(text2,(m[0]-text2.get_width()/2,m[1]-41))
@@ -1761,6 +2240,86 @@ def checkEnemyHover():
                 screen.blit(text1,(m[0]-text1.get_width()/2,m[1]-40))
 def darkenCol(col,val=0.6):
     return (col[0]*val,col[1]*val,col[2]*val)
+def getBlockAverageColour(val):
+    if val in platformBlocks:  
+        colour=pygame.transform.average_color(tileImages[val],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
+    else:colour=pygame.transform.average_color(tileImages[val])
+    return colour
+def drawInventoryHoverText():
+    global holdingItemBool, holdingItem, canDropHolding, canPickupItem
+    found=False
+    if Rect(5,20,480,244).collidepoint(m):
+        for i in range(10):
+            if Rect(5+48*i,20,48,48).collidepoint(m):
+                found=True
+                pos=["H",i]
+                break
+        for j in range(4):
+            for i in range(10):
+                if Rect(5+48*i,67+48*j,48,48).collidepoint(m):
+                    found=True
+                    pos=["I",(i,j)]
+                    break
+    if found:
+        if pygame.mouse.get_pressed()[0]:
+            if canDropHolding:
+                unique=False
+                if holdingItem.hasPrefix:
+                    unique=True
+                itemData=clientPlayer.giveItem(holdingItem.ID,holdingItem.amnt,pos=pos,unique=unique,item=holdingItem)
+                if itemData!=None:
+                    if itemData[0]==0:
+                        if SFX:
+                            if holdingItem.ID>=21 and holdingItem.ID<=24:
+                                sounds[23].play()
+                            else:
+                                sounds[19].play()
+                        holdingItem=None
+                        holdingItemBool=False
+                        canDropHolding=False
+                    elif itemData[0]==1:
+                        canDropHolding=False
+                        holdingItem.amnt=itemData[1]
+                    elif itemData[0]==2:
+                        canDropHolding=False
+                        if holdingItem.ID>=21 and holdingItem.ID<=24:
+                            sounds[23].play()
+                        else:
+                            sounds[19].play()
+                        if itemData[2]=="I":
+                            clientPlayer.inventory[pos[1][0]][pos[1][1]]=holdingItem
+                        else:
+                            clientPlayer.hotbar[pos[1]]=holdingItem
+                        holdingItem=itemData[1]
+                    if pos not in clientPlayer.oldInventoryPositions:
+                        clientPlayer.oldInventoryPositions.append(pos)
+            elif canPickupItem:
+                canPickupItem=False
+                holdingItem=clientPlayer.removeItem(pos)
+                if holdingItem!=None:
+                    if SFX:
+                        if holdingItem.ID>=21 and holdingItem.ID<=24:
+                            sounds[23].play()
+                        else:
+                            sounds[19].play()
+                    holdingItemBool=True
+        if renderStatsText(pos) and not holdingItemBool:
+            screen.blit(statsText,(m[0]+10,m[1]+10))
+def drawHoldingItem():
+    if holdingItemBool:
+        screen.blit(itemImages[holdingItem.ID],(m[0]+10,m[1]+10))
+        if holdingItem.amnt>1:
+            screen.blit(outlineText(str(holdingItem.amnt),(255,255,255),SMALLFONT),(m[0]+34,m[1]+40))
+def drawExitButton():
+    top=screenH-20
+    left=screenW-50
+    if Rect(left,top,50,20).collidepoint(m):
+        colour=(230,230,0)
+        if pygame.mouse.get_pressed()[0]:
+            Exit()
+    else:colour=(255,255,255)
+    text=outlineText("Quit",colour,DEFAULTFONT)
+    screen.blit(text,(left,top))
 noise=perlin.SimplexNoise()#create noise object
 OFFSETS=[random.random()*1000,random.random()*1000,random.random()*1000]#randomly generate offsets
 
@@ -1771,39 +2330,47 @@ specialBlocks=[13]#blocks drawn without masks
 transparentBlocks=[13]#blocks that always have background/walls drawn behind them
 platformBlocks=[13]#platforms
 
-#name, light reduction, tags, possible prefix types, [attdamage,attspeed,critchance,size,vel,manaCost,knockback,tier,buyCost,sellPrice]
-itemData=[["Dirt",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None],"Looks dirty"],
-          ["Stone",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None],None],
-          ["Snow",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None],"It's starting to melt..."],
-          ["Ice",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None],"It's icy cold."],
-          ["Wood",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None],"Looks craftable."],
-          ["Grass",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None],None],
-          ["Copper",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None],"Looks maleable."],
-          ["Silver",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None],"Looks maleable."],
-          ["Sand",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None],"It's falling through your fingers."],
-          ["Sandstone",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None],"It looks ancient."],
-          ["Trunk",0.1,["block"],[],[None,None,None,1,None,None,None,0,None,None],None],
-          ["Leaves",0.1,["block"],[],[None,None,None,1,None,None,None,0,None,None],None],
-          ["Snow Leaves",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None],None],
-          ["Platform",0,["block"],[],[None,None,None,1,None,None,None,0,None,None],"A good alternative to stairs."],
-          ["Wooden Sword",0,["melee","weapon"],["melee","common"],[7,30,0.04,40,None,None,4,0,[0,0,0,0],[0,0,0,0]],"Go get 'em!"],
-          ["Copper Sword",0,["melee","weapon"],["melee","common"],[8,26,0.04,45,None,None,5,0,[0,0,0,0],[0,0,0,0]],"Go get 'em!"],
-          ["GOD SLAYER",0,["melee","weapon"],["melee","common"],[10,1,0.1,100,None,None,12,10,[0,0,0,0],[0,0,0,0]],"Divine."],
-          ["Wooden Bow",0,["ranged","weapon"],["ranged","common"],[4,29,0.04,50,6.1,None,0,0,[0,0,0,0],[0,0,0,0]],"Shoots pointy things."],
-          ["Wooden Arrow",0,["material","ammo"],[],[None,None,None,50,None,None,None,0,[0,0,0,0],[0,0,0,0]],"Pointy."],
+#name, light reduction, tags, possible prefix types, [attdamage,attspeed,critchance,size,vel,manaCost,knockback,tier,buyCost,sellPrice,stackCount]
+itemData=[["Dirt",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],"Looks dirty"],
+          ["Stone",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None,999],None],
+          ["Snow",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],"It's starting to melt..."],
+          ["Ice",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],"It's icy cold."],
+          ["Wood",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None,999],"Looks craftable."],
+          ["Grass",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],None],
+          ["Copper",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None,999],"Looks maleable."],
+          ["Silver",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None,999],"Looks maleable."],
+          ["Sand",0.2,["block","material"],[],[None,None,None,1,None,None,None,0,None,None,999],"It's falling through your fingers."],
+          ["Sandstone",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],"It looks ancient."],
+          ["Trunk",0.1,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],None],
+          ["Leaves",0.1,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],None],
+          ["Snow Leaves",0.2,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],None],
+          ["Platform",0,["block"],[],[None,None,None,1,None,None,None,0,None,None,999],"A good alternative to stairs."],
+          ["Wooden Sword",0,["melee","weapon"],["melee","common","universal"],[7,30,0.04,40,None,None,4,0,[0,0,0,0],[0,0,0,0],1],"Go get 'em!"],
+          ["Copper Sword",0,["melee","weapon"],["melee","common","universal"],[8,26,0.04,45,None,None,5,0,[0,0,0,0],[0,0,0,0],1],"Go get 'em!"],
+          ["GOD SLAYER",0,["melee","weapon"],["melee","common","universal"],[10,1,0.1,100,None,None,12,10,[0,0,0,0],[0,0,0,0],1],"Divine."],
+          ["Wooden Bow",0,["ranged","weapon","bow"],["ranged","common","universal"],[4,29,0.04,50,6.1,None,0,0,[0,0,0,0],[0,0,0,0],1],"Shoots pointy things."],
+          ["Wooden Arrow",0,["material","ammo"],[],[None,None,None,50,None,None,None,0,[0,0,0,0],[0,0,0,0],999],"Pointy."],
+          ["Musket",0,["ranged","weapon","gun"],["ranged","common","universal"],[31,65,0.04,50,14,None,3.25,0,[0,0,0,0],[0,0,0,0],1],"You know how to fire that?"],
+          ["Musket Ball",0,["material","ammo"],[],[None,None,None,50,None,None,None,0,[0,0,0,0],[0,0,0,0],999],"Blunt."],
+          ["Copper Coin",0,["ammo","coin"],[],[None,None,None,1,None,None,None,0,None,None,100],"Keep the change ya filthy animal."],
+          ["Silver Coin",0,["ammo","coin"],[],[None,None,None,1,None,None,None,0,None,None,100],"It is cold to the touch."],
+          ["Gold Coin",0,["ammo","coin"],[],[None,None,None,1,None,None,None,0,None,None,100],"oooooh, shiny..."],
+          ["Platinum Coin",0,["ammo","coin"],[],[None,None,None,1,None,None,None,0,None,None,999],"You're rich!."],
+          ["Copper Pickaxe",0,["pickaxe","tool"],["universal","common"],[4,25,0.04,40,None,None,2,0,None,None,1],"The power of destruction is yours."],
           ]#info on tiles
 
 #info on enemies
-#name, type, hp, defense, KB resist, Damage, blood col
-enemyData=[["Green Slime","Slime",14, 0,-0.2, 6, (10,200,10)],
-          ["Blue Slime","Slime",  25, 2, 0,   7, (10,10,200)],
-          ["Red Slime","Slime",   35, 4, 0,   12,(200,10,10)],
-          ["Purple Slime","Slime",40, 6, 0.1, 12,(200,10,200)],
-          ["Yellow Slime","Slime",45, 7, 0,   15,(200,150,10)],
+#name, type, hp, defense, KB resist, Damage, blood col, itemDrops, coinDrops
+enemyData=[["Green Slime","Slime",14, 0,-0.2, 6, (10,200,10),[],(5,30)],
+          ["Blue Slime","Slime",  25, 2, 0,   7, (10,10,200),[],(15,50)],
+          ["Red Slime","Slime",   35, 4, 0,   12,(200,10,10),[],(25,75)],
+          ["Purple Slime","Slime",40, 6, 0.1, 12,(200,10,200),[],(35,110)],
+          ["Yellow Slime","Slime",45, 7, 0,   15,(200,150,10),[],(45,130)],
         ]
 #info on projectiles
-#name, type, damage, velocity, knockback, bounces, hitboxsize, trail
-projectileData=[["Wooden Arrow","Arrow",5,10,2,0,10,"arrow"],
+#name, type, damage, velocity, knockback, bounces, hitboxsize, trail, gravity, drag co-efficient
+projectileData=[["Wooden Arrow","Arrow",5,5,0,0,10,"arrow",0.1,0.99,16],
+                ["Musket Ball","Bullet",7,10,2,0,8,"bullet",0,1,17],
                 ]
 prefixData={"universal":
     [#name, damage, crit chance, knockback, tier
@@ -1818,7 +2385,7 @@ prefixData={"universal":
     ["Unpleasant", 0.05,0   , 0.15, 2],
     ["Weak",       0   ,0   ,-0.2 ,-1],
     ["Ruthless",   0.18,0   ,-0.1 , 1],
-    ["Goldy",      0.15,0.05, 0.15, 2],
+    ["Godly",      0.15,0.05, 0.15, 2],
     ["Demonic",    0.15,0.05, 0   , 2],
     ["Zealous",    0   ,0.05, 0   , 1]
     ],
@@ -1868,7 +2435,8 @@ prefixData={"universal":
     ["Powerful",     0.15,-0.1 ,0.01, 0   , 0   , 1],
     ["Frenzying",   -0.15, 0.15,0   , 0   , 0   , 0],
     ["Unreal",       0.15, 0.1 ,0.05, 0.1 , 0.15, 2],
-    ["ADMIN",        1000, 0.5 ,0.5 , 1   , 1   , 11]
+    ["ADMIN",        0.5 , 0.5 ,1   , 1   , 1   , 11],
+    ["fucked",      -1   , 0   ,0   , -1  , 0   , -10]
     ],
     "magic":
     [#name, damage, speed, crit chance, mana cost, knockback, tier
@@ -1892,7 +2460,9 @@ deathLines={"falling":["<p> fell to their death.",
                        "<p> didn't bounce.",
                        "<p> fell victim of gravity.",
                        "<p> faceplanted the ground.",
-                       "<p> left a small crater."],
+                       "<p> left a small crater.",
+                       "<p> was crushed into <w>.",
+                       ],
             "enemy":["<p> was slain by <e>.",
                     "<p> was eviscerated by <e>.",
                     "<p> was murdered by <e>.",
@@ -1925,13 +2495,27 @@ deathLines={"falling":["<p> fell to their death.",
                     "The creatures of <w> took <p> to their demise.",
                     "<p>'s particles were distributed across <w>."
                      ]}
-
+helpfulTips=["Watch out for slimes...",
+             "Now with over 20 items!",
+             "Don't die! I need your business!",
+             "Mentally prepare yourself...",
+             "So, ya like jazz?",
+             "Doesn’t expecting the unexpected make the unexpected expected?",
+             "1f you c4n r34d 7h15, you r34lly n33d 2 g37 l41d",
+             "What do you call a thieving alligator? A Crookodile",
+             "If you were a fruit, you'd be a fine-apple",
+             "How do you organize a space party?           You planet.",
+             "What do you call a classy fish?             Sofishticated.",
+             "Did you hear about the guy whose whole left side was cut off? He's all right now.",
+             "I wondered why the baseball was getting bigger. Then it hit me.",
+             ]
 goodColour=(10,230,10)
 badColour=(230,10,10)
 
 particles=[]
 enemies=[]
 projectiles=[]
+physicsItems=[]
 messages=[]
 damageNumbers=[]
 enemySpawnTick=0
@@ -1972,32 +2556,38 @@ if MUSIC:
     pygame.mixer.music.load("Sound/day.mp3")
     pygame.mixer.music.set_volume(musicVolume)
     pygame.mixer.music.play()
-    
-
 
 if SFX:
     sounds=[]
-    sounds.append(pygame.mixer.Sound("Sound/Tink_0.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Tink_1.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Tink_2.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Dig_0.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Dig_1.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Dig_2.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Jump_0.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Player_Hit_0.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Player_Hit_1.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Player_Hit_2.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Grass.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Player_Killed.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Item_6.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/NPC_Hit_1.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/NPC_Killed_1.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Item_1.wav"))
-    sounds.append(pygame.mixer.Sound("Sound/Item_5.wav"))
+    sounds.append(pygame.mixer.Sound("Sound/Tink_0.wav"))#0
+    sounds.append(pygame.mixer.Sound("Sound/Tink_1.wav"))#1
+    sounds.append(pygame.mixer.Sound("Sound/Tink_2.wav"))#2
+    sounds.append(pygame.mixer.Sound("Sound/Dig_0.wav"))#3
+    sounds.append(pygame.mixer.Sound("Sound/Dig_1.wav"))#4
+    sounds.append(pygame.mixer.Sound("Sound/Dig_2.wav"))#5
+    sounds.append(pygame.mixer.Sound("Sound/Jump_0.wav"))#6
+    sounds.append(pygame.mixer.Sound("Sound/Player_Hit_0.wav"))#7
+    sounds.append(pygame.mixer.Sound("Sound/Player_Hit_1.wav"))#8
+    sounds.append(pygame.mixer.Sound("Sound/Player_Hit_2.wav"))#9
+    sounds.append(pygame.mixer.Sound("Sound/Grass.wav"))#10
+    sounds.append(pygame.mixer.Sound("Sound/Player_Killed.wav"))#11
+    sounds.append(pygame.mixer.Sound("Sound/Item_6.wav"))#12
+    sounds.append(pygame.mixer.Sound("Sound/NPC_Hit_1.wav"))#13
+    sounds.append(pygame.mixer.Sound("Sound/NPC_Killed_1.wav"))#14
+    sounds.append(pygame.mixer.Sound("Sound/Item_1.wav"))#15
+    sounds.append(pygame.mixer.Sound("Sound/Item_5.wav"))#16
+    sounds.append(pygame.mixer.Sound("Sound/Item_40.wav"))#17
+    sounds.append(pygame.mixer.Sound("Sound/Item_10.wav"))#18
+    sounds.append(pygame.mixer.Sound("Sound/Grab.wav"))#19
+    sounds.append(pygame.mixer.Sound("Sound/Run_0.wav"))#20
+    sounds.append(pygame.mixer.Sound("Sound/Run_1.wav"))#21
+    sounds.append(pygame.mixer.Sound("Sound/Run_2.wav"))#22
+    sounds.append(pygame.mixer.Sound("Sound/Coins.wav"))#23
+    for sound in sounds:
+        sound.set_volume(0.5)
 
-hitboxDebug=False
 
-parallaxPos=(0,0)
+
 loadTorsoFrames()
 loadHairStyles() 
 loadTileMasks()
@@ -2008,12 +2598,32 @@ compileBackgroundImages()
 loadWallTiles()
 loadSlimeFrames()
 loadItemTiles()
-    
-createSurface()
+loadMiscGui()
+
+fontFilePath="Fonts/VCR_OSD_MONO_1.001.ttf"
+
+LARGEFONT=pygame.font.Font(fontFilePath,30)
+DEFAULTFONT=pygame.font.Font(fontFilePath,16)
+SMALLFONT=pygame.font.Font(fontFilePath,10)
+
+createPlayer()
 
 clock=pygame.time.Clock()
 
-createPlayer()
+if SPLASHSCREEN:
+    runSplashScreen()
+    
+screen.fill((0,0,0))
+text0=outlineText("Greetings "+clientPlayer.name+", bare with us while",(255,255,255),LARGEFONT)
+text1=outlineText("we load up '"+clientWorld.name+"'...",(255,255,255),LARGEFONT)
+text2=outlineText(helpfulTips[random.randint(0,len(helpfulTips)-1)],(255,255,255),DEFAULTFONT)
+screen.blit(text0,(screenW/2-text0.get_width()/2,screenH/2-30))
+screen.blit(text1,(screenW/2-text1.get_width()/2,screenH/2))
+screen.blit(text2,(screenW/2-text2.get_width()/2,screenH*4/5))
+pygame.display.flip()
+
+createSurface()
+
 
 clientPlayer.pos=tuple(clientWorld.spawnPoint)
 
@@ -2021,7 +2631,6 @@ fadeBack=False
 shift=False
 fadeFloat=0
 fadeBackgroundID=-1
-miningTick=0
 backgroundTick=0
 backgroundScrollVel=0
 autoSaveTick=0
@@ -2029,18 +2638,19 @@ autoSaveDelay=3600#every minute
 gameAge=0
 fps=0
 fpsTick=0
-statDisappearTick=0
-statsVisible=True
+lastHoveredItem=None
+parallaxPos=(0,0)
+holdingItemBool=False
+holdingItem=None
+canDropHolding=False
+canPickupItem=False
 
-fontFilePath="Fonts/VCR_OSD_MONO_1.001.ttf"
-inventoryFont=pygame.font.Font(fontFilePath,20)
-enemyFont=pygame.font.Font(fontFilePath,15)
-
-renderHandText()
-renderHpText()
-renderStatsText()
 clientPlayer.renderCurrentItemImage()
-fpsText=outlineText(str(int(fps)),(255,255,255),inventoryFont)
+clientPlayer.renderHotbar()
+clientPlayer.renderInventory()
+fpsText=outlineText(str(int(fps)),(255,255,255),DEFAULTFONT)
+renderHandText()
+
 while 1:
     fps=clock.get_fps()
     try:
@@ -2048,15 +2658,19 @@ while 1:
         clientPlayer.playTime+=1/fps
         gameAge+=1/fps
     except:None#fps is zero
+    
     m=pygame.mouse.get_pos()
+    
     updateEnemies()
     updateProjectiles()
     updateParticles()
     updateMessages()
+    updatePhysicsItems()
     checkEnemySpawn()
     clientPlayer.update()
     clientPlayer.animate()
     updateDamageNumbers()
+    
     if BACKGROUND:
         if fadeBack:
             if fadeFloat<1:
@@ -2071,20 +2685,36 @@ while 1:
             screen.blit(fadeSurf,parallaxPos)
     else:
         screen.fill((135,206,250))
+        
     screen.blit(mainSurf,(screenW/2-clientPlayer.pos[0],screenH/2-clientPlayer.pos[1]))
     
     clientPlayer.draw()
     drawParticles()
     drawEnemies()
+    drawPhysicsItems()
     drawProjectiles()
     drawDamageNumbers()
     drawMessages()
     checkEnemyHover()
-    screen.blit(handText,(0,0))
-    screen.blit(hpText,(0,20))
-    if statsVisible:
-        screen.blit(statsText,(0,40))
+    
+##    if not clientPlayer.inventoryOpen:
+##        screen.blit(handText,(0,60))
+##        screen.blit(hpText,(0,80))
+##        if statsVisible:
+##            screen.blit(statsText,(0,100))
+        
+    
     screen.blit(fpsText,(screenW-fpsText.get_width(),0))
+
+    screen.blit(clientPlayer.hotbarImage,(5,20))
+    if clientPlayer.inventoryOpen:
+        screen.blit(clientPlayer.inventoryImage,(5,70))
+    pygame.draw.rect(screen,(230,230,10),Rect(5+clientPlayer.hotbarIndex*48,20,48,48),3)
+    if clientPlayer.inventoryOpen:
+        drawInventoryHoverText()
+        drawExitButton()
+    screen.blit(handText,(242-handText.get_width()/2,0))
+    drawHoldingItem()
     
     if BACKGROUND:
         changeBackground()
@@ -2097,26 +2727,15 @@ while 1:
 
     if fpsTick<=0:
         fpsTick=100
-        fpsText=outlineText(str(int(fps)),(255,255,255),inventoryFont)
+        fpsText=outlineText(str(int(fps)),(255,255,255),DEFAULTFONT)
     else:fpsTick-=1
-    
-    if statDisappearTick<=0:
-        statsVisible=False
-    else:
-        statDisappearTick-=1
-        if statDisappearTick<100:
-            statsText.set_alpha(statDisappearTick*2.55)
-            
-    if clientPlayer.alive:
-        if miningTick<=0:
-            if pygame.mouse.get_pressed()[0]:
-                clientPlayer.useItem()
-            elif pygame.mouse.get_pressed()[2]:
-                clientPlayer.useItem(alt=True) 
-        else:
-            miningTick-=1
-    else:
-        drawDeathMessage()
+
+    if not pygame.mouse.get_pressed()[0]:
+        if holdingItemBool:
+            canDropHolding=True
+        elif not holdingItemBool:
+            canPickupItem=True
+        
     for event in pygame.event.get():
         if event.type==QUIT:
             Exit()
@@ -2128,7 +2747,10 @@ while 1:
             if event.key==K_LSHIFT:
                 shift=True
             if event.key==K_ESCAPE:
-                Exit()
+                if clientPlayer.inventoryOpen:
+                    clientPlayer.inventoryOpen=False
+                else:
+                    clientPlayer.inventoryOpen=True
             if event.key==K_a:
                 clientPlayer.movingLeft=True
                 clientPlayer.animationFrame=random.randint(25,36)
@@ -2157,10 +2779,7 @@ while 1:
                         if SFX:
                             sounds[6].play()
                         if PARTICLES:
-                            if clientPlayer.lastBlockOn in platformBlocks:  
-                                colour=pygame.transform.average_color(tileImages[clientPlayer.lastBlockOn],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
-                            else:colour=pygame.transform.average_color(tileImages[clientPlayer.lastBlockOn])
-                            
+                            colour=getBlockAverageColour(clientPlayer.lastBlockOn)
                             for i in range(int(random.randint(4,6)*PARTICLEDENSITY)):
                                 Particle((screenW/2,screenH/2+BLOCKSIZE*1.5),colour,size=10,life=100,angle=-math.pi/2,spread=math.pi/4,GRAV=0,magnitude=1+random.random()*3)
                         clientPlayer.vel=(clientPlayer.vel[0],-8.5)
@@ -2182,22 +2801,21 @@ while 1:
             if event.key==K_p:
                 clientPlayer.hotbar[clientPlayer.hotbarIndex]=Item(clientPlayer.hotbar[clientPlayer.hotbarIndex].ID)
                 message("Item prefix randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
-                renderStatsText()
-                renderHandText()
                 clientPlayer.renderCurrentItemImage()
+                renderHandText()
                 statsVisible=True
                 statDisappearTick=500
                 
-            if event.key==K_1:clientPlayer.hotbarIndex=0;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_2:clientPlayer.hotbarIndex=1;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_3:clientPlayer.hotbarIndex=2;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_4:clientPlayer.hotbarIndex=3;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_5:clientPlayer.hotbarIndex=4;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_6:clientPlayer.hotbarIndex=5;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_7:clientPlayer.hotbarIndex=6;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_8:clientPlayer.hotbarIndex=7;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_9:clientPlayer.hotbarIndex=8;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
-            if event.key==K_0:clientPlayer.hotbarIndex=9;renderHandText();renderStatsText();clientPlayer.renderCurrentItemImage();statsVisible=True;statDisappearTick=500
+            if event.key==K_1:clientPlayer.hotbarIndex=0;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_2:clientPlayer.hotbarIndex=1;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_3:clientPlayer.hotbarIndex=2;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_4:clientPlayer.hotbarIndex=3;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_5:clientPlayer.hotbarIndex=4;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_6:clientPlayer.hotbarIndex=5;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_7:clientPlayer.hotbarIndex=6;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_8:clientPlayer.hotbarIndex=7;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_9:clientPlayer.hotbarIndex=8;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+            if event.key==K_0:clientPlayer.hotbarIndex=9;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
 
             if event.key==K_UP and shift:
                 musicVolume+=0.05
@@ -2219,5 +2837,19 @@ while 1:
                 clientPlayer.animationSpeed=1
             if event.key==K_LSHIFT:
                 shift=False
+                
+        if event.type==MOUSEBUTTONDOWN:
+            if event.button==4:
+                if clientPlayer.hotbarIndex>0:
+                    clientPlayer.hotbarIndex-=1
+                    clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                else:
+                    clientPlayer.hotbarIndex=9
+            if event.button==5:
+                if clientPlayer.hotbarIndex<9:
+                    clientPlayer.hotbarIndex+=1
+                    clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                else:
+                    clientPlayer.hotbarIndex=0
     pygame.display.flip()
     clock.tick(80)

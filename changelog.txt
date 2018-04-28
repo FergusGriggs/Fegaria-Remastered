@@ -61,3 +61,17 @@
 -improved 'hotbar' and item descriptions
 -added ranged prefix 'ADMIN'
 -added 'FANCYTEXT' config option
+24-28/04/2018-v0.0.4----------------------------------
+-compete ui rework
+-added inventory
+-added physics items
+-added ranged weapon musket
+-added skippable splashscreen and option to turn it off
+-added item musket ball
+-added item Copper Coin
+-added item Silver Coin
+-added item Gold Coin
+-added item Platinum Coin
+-added Tool/item Copper Pickaxe
+-moved quit button into the bottom right (when in inventory)
+-updated block functions, blocks have to be destroyed with a pickaxe now
