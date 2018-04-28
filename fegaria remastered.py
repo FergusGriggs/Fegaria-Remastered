@@ -1,8 +1,7 @@
 #fegaria remastered
 __author__="Fergus Griggs"
 __email__="fbob987 at gmail dot com"
-__version__="0.0.5"
-
+__version__="0.0.4"
 
 import pygame, sys, math, time, os, random, perlin, pickle, datetime
 from pygame.locals import *
@@ -872,40 +871,8 @@ class Player():#stores all info about a player
                         return [2,item,"I"]
                 elif self.inventory[pos[1][0]][pos[1][1]].ID!=ID:
                     item=self.inventory[pos[1][0]][pos[1][1]]
-                    return [2,item,"I"]
-##    def sortCoins(self):
-##        total=0#idea: get positions of plat gold silver and copper, if copper amnt = 100 +1 to silver if silver=100 +1 to gold,if gold==100 +1 to plat
-##        #this should maintain the positions of coins in the inventory or just check if it's a coin in the give item code and work it out there
-##        positions=[]
-##        for j in range(4):
-##            for i in range(10):
-##                item=self.inventory[i][j]
-##                if item!=None:
-##                    if item.ID>=21 and item.ID<=24:
-##                        positions.append((i,j))
-##                        if item.ID==24:
-##                            total+=item.amnt*1000000
-##                        elif item.ID==23:
-##                            total+=item.amnt*10000
-##                        elif item.ID==22:
-##                            total+=item.amnt*100
-##                        elif item.ID==21:
-##                            total+=item.amnt
-##                        self.inventory[i][j]=None
-##                        pos=["I",(i,j)]
-##                        if pos not in self.oldInventoryPositions:
-##                            self.oldInventoryPositions.append(pos)
-##                else:positions.append((i,j))
-##        coins=coinsFromVal(total)
-##        positions=sorted(positions,key=lambda x:x[1])
-##        for i in range(len(coins)):
-##            if coins[i]>0:
-##                if len(positions)>0:
-##                    self.inventory[positions[0][0]][positions[0][1]]=Item(24-i,amnt=coins[i])
-##                    positions.remove(positions[0])
-                    
+                    return [2,item,"I"]                  
             
-                
     def removeItem(self,pos):
         if pos[0]=="H":
             item=self.hotbar[pos[1]]
