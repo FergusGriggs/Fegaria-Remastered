@@ -1,7 +1,7 @@
 #fegaria remastered
 __author__="Fergus Griggs"
 __email__="fbob987 at gmail dot com"
-__version__="0.0.4"
+__version__="0.0.5"
 
 import pygame, sys, math, time, os, random, perlin, pickle, datetime
 from pygame.locals import *
@@ -1460,7 +1460,10 @@ def makeSpawnPoint():#creates and grounds spawn point
         
 def loadPlayerData():#loads all possible player saves, giving options to load them or create a new save
     global playerData
-    possibleLoads=os.listdir("Players")#get filenames
+    path = "Players"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    possibleLoads=os.listdir(path)#get filenames
     choice="n"
     if len(possibleLoads)>0:
         print("Which player do you want to load? (player number or 'n' to create a new player)\n")
@@ -1489,7 +1492,10 @@ def createPlayer():
     
 def loadSaves(forceWorldGen=False):#loads all possible saves, giving options to load them or create a new save
     global mapData, tileMaskData, wallTileMaskData, backgroundID, worldName, MAPSIZEX, MAPSIZEY, clientWorld
-    possibleLoads=os.listdir("Saves")#get filenames
+    path = "Saves"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    possibleLoads=os.listdir(path)#get filenames
     choice="n"
     if len(possibleLoads)>0:
         print("\nWhich slot do you want to load? (slot number or 'n' to create a new save)\n")
