@@ -1,17 +1,50 @@
-28-29/03/2018-v0.0.1------------------------------
--added block mask system
--added block merging
--added background parallax
--added player animation and hair randomization
--added block stone block
--added block dirt
--added block ice block
--added block snow block
-02/04/2018-v0.0.1---------------------------------
--added simple world generation
--added block wood block
--added block grass
--added world saving
+24-28/04/2018-v0.0.5----------------------------------
+-compete ui rework
+-added inventory
+-added physics items
+-added ranged weapon musket
+-added skippable splashscreen and option to turn it off
+-added item musket ball
+-added item Copper Coin
+-added item Silver Coin
+-added item Gold Coin
+-added item Platinum Coin
+-added Tool/item Copper Pickaxe
+-moved quit button into the bottom right (when in inventory)
+-updated block functions, blocks have to be destroyed with a pickaxe now
+-several new config options
+22-23/04/2018-v0.0.4----------------------------------
+-added projectiles
+-added simple player creation saving
+-added item/ranged weapon wooden bow
+-added item/ammo/projectile wooden arrow
+-improved text readability and quality
+-added enemy hover text
+-added item tier colours
+-improved 'hotbar' and item descriptions
+-added ranged prefix 'ADMIN'
+-added 'FANCYTEXT' config option
+13-14/04/2018-v0.0.3---------------------------------
+-added sword wooden
+-added sword copper
+-added sword GOD SLAYER
+-added item prefixes
+-added enemy blue slime
+-added enemy green slime
+-added enemy red slime
+-added enemy purple slime
+-added enemy yellow slime
+-added item descriptions
+-added sword animations
+-added damage numbers
+-added death messages
+09-12/04/2018-v0.0.2---------------------------------
+-added tutorial world
+-world saving improved (now saves spawn point and other details in a .dat file)
+-added music volume controls
+-added hp and hotbar text
+-added more config options
+-fixed clipping through platforms when falling quickly
 08/04/2018-v0.0.2---------------------------------
 -added biome woodland
 -added biome snow
@@ -29,50 +62,17 @@
 -added wall sand
 -added wall sandstone
 -world saving improved (menu)
-09-12/04/2018-v0.0.2---------------------------------
--added tutorial world
--world saving improved (now saves spawn point and other details in a .dat file)
--added music volume controls
--added hp and hotbar text
--added more config options
--fixed clipping through platforms when falling quickly
-13-14/04/2018-v0.0.3---------------------------------
--added sword wooden
--added sword copper
--added sword GOD SLAYER
--added item prefixes
--added enemy blue slime
--added enemy green slime
--added enemy red slime
--added enemy purple slime
--added enemy yellow slime
--added item descriptions
--added sword animations
--added damage numbers
--added death messages
-22-23/04/2018-v0.0.4----------------------------------
--added projectiles
--added simple player creation saving
--added item/ranged weapon wooden bow
--added item/ammo/projectile wooden arrow
--improved text readability and quality
--added enemy hover text
--added item tier colours
--improved 'hotbar' and item descriptions
--added ranged prefix 'ADMIN'
--added 'FANCYTEXT' config option
-24-28/04/2018-v0.0.4----------------------------------
--compete ui rework
--added inventory
--added physics items
--added ranged weapon musket
--added skippable splashscreen and option to turn it off
--added item musket ball
--added item Copper Coin
--added item Silver Coin
--added item Gold Coin
--added item Platinum Coin
--added Tool/item Copper Pickaxe
--moved quit button into the bottom right (when in inventory)
--updated block functions, blocks have to be destroyed with a pickaxe now
--several new config options
+02/04/2018-v0.0.1---------------------------------
+-added simple world generation
+-added block wood block
+-added block grass
+-added world saving
+28-29/03/2018-v0.0.1------------------------------
+-added block mask system
+-added block merging
+-added background parallax
+-added player animation and hair randomization
+-added block stone block
+-added block dirt
+-added block ice block
+-added block snow block
