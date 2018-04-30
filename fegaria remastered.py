@@ -29,7 +29,7 @@ def loadMiscGui():
     miscGuiImages=[]
     miscTilesetimg=pygame.image.load("Textures/miscTileset.png").convert()
     for j in range(1):
-        for i in range(1):
+        for i in range(10):
             surf=pygame.Surface((48,48))
             surf.set_colorkey((255,0,255))
             surf.blit(miscTilesetimg,(-i*48,-j*48))
@@ -97,8 +97,8 @@ def loadHairStyles():
     global hairStyles
     hairStyles=[]
     scale=2
-    img=pygame.transform.scale(pygame.image.load("Textures/hairsTileset.png"),(int(22*9*scale),int(24*scale)))
-    for i in range(9):
+    img=pygame.transform.scale(pygame.image.load("Textures/hairsTileset.png"),(int(22*10*scale),int(24*scale)))
+    for i in range(10):
         surf=pygame.Surface((int(22*scale),int(24*scale)))
         surf.set_colorkey((255,0,255))
         surf.blit(img,(-i*22*scale,0))
@@ -109,12 +109,13 @@ def loadTorsoFrames():
     global torsoFrames
     torsoFrames=[]
     scale=2
-    img=pygame.transform.scale(pygame.image.load("Textures/torsoTileset.png"),(int(20*19*scale),int(30*scale)))
-    for i in range(19):
-        surf=pygame.Surface((int(20*scale),int(30*scale)))
-        surf.set_colorkey((255,0,255))
-        surf.blit(img,(-i*20*scale,0))
-        torsoFrames.append(surf)
+    img=pygame.transform.scale(pygame.image.load("Textures/torsoTileset.png"),(int(20*19*scale),int(30*4*scale)))
+    for j in range(4):
+        for i in range(19):
+            surf=pygame.Surface((int(20*scale),int(30*scale)))
+            surf.set_colorkey((255,0,255))
+            surf.blit(img,(-i*20*scale,-j*30*scale))
+            torsoFrames.append(surf)
 def loadSlimeFrames():
     global slimeFrames
     slimeFrames=[]
@@ -139,8 +140,9 @@ def compileBackgroundImages():#creates a larger surf compiled with background su
         backsurfs.append(backsurf)
         
 class Model():#used to store info about the player's looks (fairly useless atm)
-    def __init__(self,sex,hairID,hairCol,eyeCol,shirtCol,underShirtCol,trouserCol,shoeCol):
+    def __init__(self,sex,hairID,skinCol,hairCol,eyeCol,shirtCol,underShirtCol,trouserCol,shoeCol):
         self.sex=sex
+        self.skinCol=skinCol
         self.hairID=hairID
         self.hairCol=hairCol
         self.eyeCol=eyeCol
@@ -305,10 +307,10 @@ class Enemy():
         else:
             self.animationFrame=0
     def checkDespawn(self):
-        if self.pos[0]<clientPlayer.pos[0]-screenW:enemies.remove(self)
-        elif self.pos[0]>clientPlayer.pos[0]+screenW:enemies.remove(self)
-        elif self.pos[1]<clientPlayer.pos[1]-screenH:enemies.remove(self)
-        elif self.pos[1]>clientPlayer.pos[1]+screenH:enemies.remove(self)
+        if self.pos[0]<clientPlayer.pos[0]-xMaxBlocks*1.5*BLOCKSIZE:enemies.remove(self)
+        elif self.pos[0]>clientPlayer.pos[0]+xMaxBlocks*1.5*BLOCKSIZE:enemies.remove(self)
+        elif self.pos[1]<clientPlayer.pos[1]-yMaxBlocks*1.5*BLOCKSIZE:enemies.remove(self)
+        elif self.pos[1]>clientPlayer.pos[1]+yMaxBlocks*1.5*BLOCKSIZE:enemies.remove(self)
         
     def draw(self):
         left=self.rect.left-clientPlayer.pos[0]+screenW/2
@@ -383,11 +385,15 @@ class Player():#stores all info about a player
         self.renderSprites()
         self.animationTick=0
         self.animationTick2=0
+        self.armAnimationFrame=0
+        self.armAnimationTick=0
         self.animationFrame=5#which frame to blit
         self.alive=True
         self.respawnTick=0#how long till respawn
         self.HP=100
         self.maxHP=self.HP
+        self.hpText=outlineText(str(self.HP),(0,255,0),DEFAULTFONT,outlineColour=(0,180,0))
+        self.hpXpos=screenW-10-100-self.hpText.get_width()/2
         self.grounded=True
         self.movingLeft=False
         self.movingRight=False
@@ -459,16 +465,17 @@ class Player():#stores all info about a player
                     self.grounded=True
 
             if self.miningTick<=0:
-                use=False
-                if clientPlayer.inventoryOpen:
-                    if not Rect(5,5,480,244).collidepoint(m):
-                        use=True
-                else:use=True
-                if use:
-                    if pygame.mouse.get_pressed()[0]:
-                        self.useItem()
-                    elif pygame.mouse.get_pressed()[2]:
-                        self.useItem(alt=True)
+                if pygame.mouse.get_pressed()[0] or pygame.mouse.get_pressed()[2]:
+                    use=False
+                    if clientPlayer.inventoryOpen:
+                        if not Rect(5,5,480,244).collidepoint(m) and not Rect(screenW-50,screenH-20,50,20).collidepoint(m):
+                            use=True
+                    else:use=True
+                    if use and clientPrompt==None and waitToUse==False:
+                        if pygame.mouse.get_pressed()[0]:
+                            self.useItem()
+                        elif pygame.mouse.get_pressed()[2]:
+                            self.useItem(alt=True)
             else:
                 self.miningTick-=1
                 
@@ -566,6 +573,9 @@ class Player():#stores all info about a player
                         Particle((screenW/2,screenH/2),(230,0,0),life=100,GRAV=0.02,angle=-math.pi/2,spread=math.pi,magnitude=random.random()*2)
             else:
                 self.kill(source)
+        hpFloat=self.HP/self.maxHP
+        self.hpText=outlineText(str(self.HP),((1-hpFloat)*255,hpFloat*255,0),DEFAULTFONT,outlineColour=((1-hpFloat)*180,hpFloat*180,0))
+        self.hpXpos=screenW-10-hpFloat*100-self.hpText.get_width()/2
             
     def kill(self,source):
         if self.alive:
@@ -585,6 +595,8 @@ class Player():#stores all info about a player
         self.vel=(0,0)
         self.alive=True
         self.HP=int(self.maxHP)#reset hp
+        self.hpText=outlineText(str(self.HP),(0,255,0),DEFAULTFONT,outlineColour=(0,180,0))
+        self.hpXpos=screenW-10-100-self.hpText.get_width()/2
     def renderCurrentItemImage(self):
         item=self.hotbar[self.hotbarIndex]
         if item!=None:
@@ -592,77 +604,135 @@ class Player():#stores all info about a player
             scale=item.size/itemData[item.ID][4][3]
             self.currentItemImage=pygame.transform.scale(self.currentItemImage,(int(self.currentItemImage.get_width()*scale),int(self.currentItemImage.get_height()*scale)))
     def animate(self):
-            if not self.armSwing:#arm swing overrides other animations (sometimes causes sliding)
-                if self.animationTick<=0:#happens every 'animationSpeed' frames
-                    self.animationTick=self.animationSpeed
-                    if self.grounded:
-                        if self.movingLeft:#if moving left, cycle through left frames
-                            if  self.animationFrame<37:
-                                 self.animationFrame+=1
-                            else:
-                                self.animationFrame=25
-                            return
-                        elif self.movingRight:#if moving right, cycle through right frames
-                            if  self.animationFrame<18:
-                                 self.animationFrame+=1
-                            else:
-                                self.animationFrame=6
-                            return
-                        else:#if idle put arms down
-                            if self.direction==0:
-                                self.animationFrame=19
-                            elif self.direction==1:
-                                self.animationFrame=0  
-                    else:#puts arms in the air if not grounded
-                        if self.direction==0:
-                            self.animationFrame=24
-                        elif self.direction==1:
-                            self.animationFrame=5
-                else:
-                    self.animationTick-=1
-            else:#cycle through arm swing animation frames
-                if self.animationTick<=0:
-                    self.animationTick=2
-                    if self.direction==1:
-                        if self.animationFrame<3:
-                            self.animationFrame+=1
-                        else:
-                            self.animationFrame=0
-                            self.armSwing=False
+        if self.animationTick<=0:#happens every 'animationSpeed' frames
+            self.animationTick=self.animationSpeed
+            if self.grounded:
+                if self.movingLeft:#if moving left, cycle through left frames
+                    if  self.animationFrame<29:
+                         self.animationFrame+=1
                     else:
-                        if self.animationFrame<22:
-                            self.animationFrame+=1
-                        else:
-                            self.animationFrame=19
-                            self.armSwing=False
+                        self.animationFrame=17
+                    return
+                elif self.movingRight:#if moving right, cycle through right frames
+                    if  self.animationFrame<14:
+                         self.animationFrame+=1
+                    else:
+                        self.animationFrame=2
+                    return
+                else:#if idle put arms down
+                    if self.direction==0:
+                        self.animationFrame=15
+                    elif self.direction==1:
+                        self.animationFrame=0  
+            else:#puts arms in the air if not grounded
+                if self.direction==0:
+                    self.animationFrame=16
+                elif self.direction==1:
+                    self.animationFrame=1
+        else:
+            self.animationTick-=1
+        if self.armHold:
+            if self.direction==1:
+                self.armAnimationFrame=19
+            else:
+                self.armAnimationFrame=39
+        elif self.armSwing:
+            if self.armAnimationTick<=0:
+                self.armAnimationTick=2
+                if self.direction==1:
+                    if self.armAnimationFrame<3:
+                        self.armAnimationFrame+=1
+                    else:
+                        if self.movingRight:self.armAnimationFrame=6
+                        else:self.armAnimationFrame=26
+                        self.armSwing=False
                 else:
-                    self.animationTick-=0.5
+                    if self.armAnimationFrame<23 and self.armAnimationFrame>=20:
+                        self.armAnimationFrame+=1
+                    else:
+                        if self.movingRight:self.armAnimationFrame=6
+                        else:self.armAnimationFrame=26
+                        self.armSwing=False
+            else:
+                self.armAnimationTick-=0.75
+        else:
+            if self.grounded:
+                if self.movingLeft:#if moving left, cycle through left frames
+                    if  self.armAnimationFrame<38:
+                         self.armAnimationFrame+=1
+                    else:
+                        self.armAnimationFrame=26
+                    return
+                elif self.movingRight:#if moving right, cycle through right frames
+                    if  self.armAnimationFrame<18:
+                         self.armAnimationFrame+=1
+                    else:
+                        self.armAnimationFrame=6
+                    return
+                else:#if idle put arms down
+                    if self.direction==0:
+                        self.armAnimationFrame=20
+                    elif self.direction==1:
+                        self.armAnimationFrame=0  
+            else:#puts arms in the air if not grounded
+                if self.direction==0:
+                    self.armAnimationFrame=25
+                elif self.direction==1:
+                    self.armAnimationFrame=5
                     
     def renderSprites(self):#create an array of surfs for the current character used for animation/blitting
+        
         self.sprites=[]
+        self.armSprites=[]
+        
         for j in range(2):#for both directions
-            hair=pygame.Surface((44,48))   
-            hair.fill((255,255,255))
-            hair.blit(hairStyles[self.model.hairID],(0,0))#create a surf with the given hair and white background
+            hair=colourSurface(hairStyles[self.model.hairID],self.model.hairCol)
             if j==1:#flip if necessary
                 hair=pygame.transform.flip(hair,True,False)
-            hair.set_colorkey((255,255,255))#set the colourkey to white
-            colour=pygame.Surface((44,48))
-            colour.fill(self.model.hairCol)#create a blank surf with the colour of the hair
-            hair.blit(colour,(0,0),None,BLEND_RGB_ADD)#blit the new surf to the hair with an add blend flag
-            for i in range(19):#all animation frames for one direction
-                surf=pygame.Surface((44,75))
-                surf.fill((255,0,255))
-                surf.set_colorkey((255,0,255))#create the surf for the whole player with a colourkey of (255,0,255)
-                if j==0:#if right blit this
-                    surf.blit(hairStyles[8],(0,0))
-                    surf.blit(hair,(0,0))
-                    surf.blit(pygame.transform.flip(torsoFrames[i],True,False),(0,4))
-                else:#if left blit this
-                    surf.blit(pygame.transform.flip(hairStyles[8],True,False),(0,0))
-                    surf.blit(hair,(-4,0))
-                    surf.blit(torsoFrames[i],(0,4))
-                self.sprites.append(surf)
+            torso=colourSurface(torsoFrames[0],self.model.shirtCol)
+            if j==0:#flip if necessary
+                torso=pygame.transform.flip(torso,True,False)
+            head=colourSurface(hairStyles[9],self.model.skinCol)
+            pygame.draw.rect(head,(255,254,255),Rect(20,22,4,4),0)
+            pygame.draw.rect(head,self.model.eyeCol,Rect(22,22,2,4),0)
+            if j==1:#flip if necessary
+                head=pygame.transform.flip(head,True,False)
+            for i in range(15):#all animation frames for one direction
+                bodySurf=pygame.Surface((44,75))
+                bodySurf.fill((255,0,255))
+                bodySurf.set_colorkey((255,0,255))#create the surf for the whole player with a colourkey of (255,0,255)
+                trousers=colourSurface(torsoFrames[i+1],self.model.trouserCol)
+                if j==0:#flip if necessary
+                    trousers=pygame.transform.flip(trousers,True,False)
+                shoes=colourSurface(torsoFrames[i+16],self.model.shoeCol)
+                if j==0:#flip if necessary
+                    shoes=pygame.transform.flip(shoes,True,False)
+                bodySurf.blit(torso,(0,4))
+                bodySurf.blit(trousers,(0,4))
+                bodySurf.blit(shoes,(0,4))
+                bodySurf.blit(head,(0,0))
+                bodySurf.blit(hair,(0,0))
+                
+                self.sprites.append(bodySurf)
+            for i in range(20):#all animation frames for one direction
+                armSurf=pygame.Surface((44,75))
+                armSurf.fill((255,0,255))
+                armSurf.set_colorkey((255,0,255))
+
+                arms=colourSurface(torsoFrames[i+31],self.model.underShirtCol)
+                if j==0:#flip if necessary
+                    arms=pygame.transform.flip(arms,True,False)
+                    
+                hands=colourSurface(torsoFrames[i+51],self.model.skinCol)
+                if j==0:#flip if necessary
+                    hands=pygame.transform.flip(hands,True,False)
+                
+                armSurf.blit(arms,(0,4))
+                armSurf.blit(hands,(0,4))
+
+                self.armSprites.append(armSurf)
+                
+                
     def useItem(self,alt=False):
         global mapData
         swing=False
@@ -705,7 +775,7 @@ class Player():#stores all info about a player
                                     swing=True
 
             elif "pickaxe" in item.tags:
-                if self.canUse and math.sqrt((screenW/2-m[0])**2+(screenH/2-m[1])**2)<BLOCKSIZE*6 or CREATIVE:
+                if self.canUse or CREATIVE:
                     self.enemiesHit=[]
                     self.canUse=False
                     self.useTick=int(item.attackSpeed)
@@ -713,27 +783,29 @@ class Player():#stores all info about a player
                     self.itemSwing=True
                     if self.direction==1:self.swingAngle=10
                     else:self.swingAngle=65
-                    
-                    if shift:datIndex=1#wall or block being clicked
-                    else:datIndex=0
-                    blockpos=(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
-                    tile=mapData[blockpos[0]][blockpos[1]][datIndex]
-                    if tile!=-1:
-                        if tile==5:
-                            mapData[blockpos[0]][blockpos[1]][datIndex]=0
-                        else:
-                            mapData[blockpos[0]][blockpos[1]][datIndex]=-1
-                            PhysicsItem(((blockpos[0]+0.5)*BLOCKSIZE,(blockpos[1]+0.5)*BLOCKSIZE),tile,pickupDelay=0)
-                        updateSurface(blockpos[0],blockpos[1])
-                        if tile in platformBlocks:  
-                            colour=pygame.transform.average_color(tileImages[tile],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
-                        else:colour=pygame.transform.average_color(tileImages[tile])
-                        
-                        if SFX:
-                            playHitSfx(tile)
-                        if PARTICLES:
-                            for i in range(int(random.randint(2,3)*PARTICLEDENSITY)):
-                                Particle(m,colour,size=10,life=100,angle=-math.pi/2,spread=math.pi,GRAV=0.05)
+                    if SFX:
+                        sounds[15].play()
+                    if math.sqrt((screenW/2-m[0])**2+(screenH/2-m[1])**2)<BLOCKSIZE*6 or CREATIVE:
+                        if shift:datIndex=1#wall or block being clicked
+                        else:datIndex=0
+                        blockpos=(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
+                        tile=mapData[blockpos[0]][blockpos[1]][datIndex]
+                        if tile!=-1:
+                            if tile==5:
+                                mapData[blockpos[0]][blockpos[1]][datIndex]=0
+                            else:
+                                mapData[blockpos[0]][blockpos[1]][datIndex]=-1
+                                PhysicsItem(((blockpos[0]+0.5)*BLOCKSIZE,(blockpos[1]+0.5)*BLOCKSIZE),tile,pickupDelay=0)
+                            updateSurface(blockpos[0],blockpos[1])
+                            if tile in platformBlocks:  
+                                colour=pygame.transform.average_color(tileImages[tile],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
+                            else:colour=pygame.transform.average_color(tileImages[tile])
+                            
+                            if SFX:
+                                playHitSfx(tile)
+                            if PARTICLES:
+                                for i in range(int(random.randint(2,3)*PARTICLEDENSITY)):
+                                    Particle(m,colour,size=10,life=100,angle=-math.pi/2,spread=math.pi,GRAV=0.05)
                     
             elif "melee" in item.tags:
                 if self.canUse:
@@ -751,9 +823,9 @@ class Player():#stores all info about a player
                 if not self.armSwing:
                     self.armSwing=True
                     if self.direction==1:
-                        self.animationFrame=0
+                        self.armAnimationFrame=1
                     else:
-                        self.animationFrame=19
+                        self.armAnimationFrame=20
             elif "ranged" in item.tags:
                 if self.canUse:
                     if m[0]<screenW/2:
@@ -986,7 +1058,18 @@ class Player():#stores all info about a player
                 else:offsetx=-img.get_width()/2
                 if self.direction==1:offsety=-math.sin(angle2+0.2)*img.get_height()*2/3-img.get_height()/4
                 else:offsety=-math.sin(angle2+0.3)*img.get_width()*2/3+img.get_height()/2
-                screen.blit(rot_center(img,angle1),(screenW/2-20+offsetx,screenH/2-33+offsety))  
+                screen.blit(rot_center(img,angle1),(screenW/2-20+offsetx,screenH/2-33+offsety))
+                
+            screen.blit(self.armSprites[self.armAnimationFrame],(screenW/2-20,screenH/2-33))
+        
+        if self.HP>0:
+            rect=Rect(screenW-10-self.HP*2,25,self.HP*2,20)
+            hpFloat=self.HP/self.maxHP
+            col=((1-hpFloat)*255,hpFloat*255,0)
+            pygame.draw.rect(screen,col,rect,0)
+            pygame.draw.rect(screen,(col[0]*0.8,col[1]*0.8,0),rect,3)
+            screen.blit(self.hpText,(self.hpXpos,45))
+        
         if HITBOXES:#show hitbox
             pygame.draw.rect(screen,(255,0,0),Rect(screenW/2-playerWidth/2,screenH/2-playerHeight/2,playerWidth,playerHeight),1)
             
@@ -1693,7 +1776,143 @@ class PhysicsItem():
             screen.blit(self.image,(self.rect.left-clientPlayer.pos[0]+screenW/2-self.spacing/2,self.rect.top-clientPlayer.pos[1]+screenH/2-self.spacing/2))
         if HITBOXES:
             pygame.draw.rect(screen,(255,0,0),Rect(self.rect.left-clientPlayer.pos[0]+screenW/2,self.rect.top-clientPlayer.pos[1]+screenH/2,self.rect.width,self.rect.height),1)
+            
+class Prompt():
+    def __init__(self,name,body,button1Name=None,shop=False,shopItems=None,size=(10,3),NPC=True):
+        self.name=name
+        self.body=body
         
+        self.shop=shop
+        self.shopHover=False
+        self.shopItems=shopItems
+        
+        self.button1Name=button1Name
+        self.button1Pressed=False
+        self.button1Hover=False
+
+        self.closeHover=False
+        self.close=False
+        
+        self.bodySurf=createPromptSurf(size[0],size[1],body)
+        
+        self.width=self.bodySurf.get_width()
+        self.height=self.bodySurf.get_height()
+        
+        self.left=screenW/2-self.width/2
+        self.top=screenH*2/7-self.height/2
+        self.bot=self.top+self.height-30
+        if SFX:
+            if NPC:
+                sounds[27].play()
+            else:
+                sounds[24].play()
+        
+    def update(self):
+        offsetx=10
+        if self.shop:
+            if Rect(self.left+offsetx,self.bot,60,20).collidepoint(m):
+                if not self.shopHover:
+                    self.shopHover=True
+                    if SFX:
+                        sounds[26].play()
+            else:
+                self.shopHover=False
+            offsetx+=60
+        if self.button1Name!=None:
+            if Rect(self.left+offsetx,self.bot,60,20).collidepoint(m):
+                if not self.button1Hover:
+                    self.button1Hover=True
+                    if SFX:
+                        sounds[26].play()
+                if pygame.mouse.get_pressed()[0]:
+                    self.button1Pressed=True
+            else:
+                self.button1Hover=False
+            offsetx+=DEFAULTFONT.size(self.button1Name)[0]+20
+        if Rect(self.left+offsetx,self.bot,60,20).collidepoint(m):
+            if not self.closeHover:
+                self.closeHover=True
+                if SFX:
+                    sounds[26].play()
+            if pygame.mouse.get_pressed()[0]:
+                if SFX:
+                    sounds[25].play()
+                self.close=True
+        else:
+            self.closeHover=False
+            
+        if pygame.mouse.get_pressed()[0] and not waitToUse:
+            if not Rect(self.left,self.top,self.width,self.height).collidepoint(m):
+                if SFX:
+                    sounds[25].play()
+                self.close=True
+                
+        if self.name=="Exit":
+            if self.button1Pressed:
+                Exit()
+            
+    def draw(self):
+        screen.blit(self.bodySurf,(self.left,self.top))
+        offsetx=20
+        if self.shop:
+            shopCol=(230,230,10)
+            if self.shopHover:
+                shopCol=(255,255,255)
+            screen.blit(outlineText("Shop",shopCol,DEFAULTFONT),(self.left+offsetx,self.bot))
+            offsetx+=60
+        if self.button1Name!=None:
+            button1Col=(230,230,10)
+            if self.button1Hover:
+                button1Col=(255,255,255)
+            screen.blit(outlineText(self.button1Name,button1Col,DEFAULTFONT),(self.left+offsetx,self.bot))
+            offsetx+=DEFAULTFONT.size(self.button1Name)[0]+20
+        closeCol=(230,230,10)
+        if self.closeHover:
+            closeCol=(255,255,255)
+        screen.blit(outlineText("Close",closeCol,DEFAULTFONT),(self.left+offsetx,self.bot))
+
+def createPromptSurf(width,height,body):#measurements in multiples of 48px
+    surf=pygame.Surface((width*48,height*48))
+    surf.fill((255,0,255))
+    surf.set_colorkey((255,0,255))
+    for i in range(width):
+        for j in range(height):
+            if i==0:
+                if j==0:
+                    index=5
+                elif j==height-1:
+                    index=6
+                else:
+                    index=2
+            elif i==width-1:
+                if j==0:
+                    index=8
+                elif j==height-1:
+                    index=7
+                else:
+                    index=4
+            elif j==0:
+                index=1
+            elif j==height-1:
+                index=3
+            else:
+                index=9
+                
+            surf.blit(miscGuiImages[index],(i*48,j*48))
+    usableWidth=width*48-60
+    lines=[""]
+    words=body.split(" ")
+    lineWidth=0
+    for word in words:
+        lineWidth+=DEFAULTFONT.size(" "+word)[0]
+        if lineWidth>usableWidth:
+            lineWidth=0
+            lines.append(word)
+        else:
+            lines[-1]+=" "+word
+    for i in range(len(lines)):
+        surf.blit(outlineText(lines[i],(255,255,255),DEFAULTFONT),(15,15+i*20))
+    return surf
             
 def Exit():
     Save()
@@ -1708,7 +1927,6 @@ def Save():
     playerData=[clientPlayer.name,clientPlayer.model,clientPlayer.hotbar,clientPlayer.inventory,clientPlayer.HP,clientPlayer.maxHP,clientPlayer.playTime,clientPlayer.creationDate]#create player array
     pickle.dump(playerData,open("Players/"+clientPlayer.name+".player","wb"))#save player array
     message("Game saved!",(255,255,255))
-    print("Saved!")
     
 def createVein(i,j,val,size):
     try:
@@ -1844,11 +2062,13 @@ def runSplashScreen():
     age=0
     text=outlineText("A Fergus Griggs game...",(255,255,255),LARGEFONT)
     blackSurf=pygame.Surface((screenW,screenH))
-    frame=0
+    frame=2
+    frame2=6
     xpos=-30
     tick=0
     while not done:
         screen.blit(backsurfs[1],(0,0))
+        drawParticles()
         if age<50:
             blackSurf.set_alpha(255)
         elif age<150 and age>50:
@@ -1861,21 +2081,25 @@ def runSplashScreen():
                 if SFX:
                     sounds[random.randint(20,22)].play()
             else:tick-=1
-            if frame<18:
+            if frame<14:
                 frame+=1
             else:
-                frame=6
+                frame=2
+            if frame2<18:
+                frame2+=1
+            else:
+                frame2=6
             if PARTICLES:
                 Particle((xpos+playerWidth,screenH*3/4+playerHeight*1.15),(255,255,255),GRAV=-0.1,size=10,angle=math.pi,spread=math.pi,magnitude=1)
             xpos+=screenW/290
+            screen.blit(clientPlayer.sprites[frame],(xpos,screenH*3/4))
+            screen.blit(clientPlayer.armSprites[frame2],(xpos,screenH*3/4))
         elif age>450 and age<600:
             updateParticles()
             alpha=(age-450)/150*255
             blackSurf.set_alpha(alpha)
         elif age>650:
             done=True
-        drawParticles()
-        screen.blit(clientPlayer.sprites[frame],(xpos,screenH*3/4))
         screen.blit(text,(screenW/2-text.get_width()/2,screenH/2))
         screen.blit(blackSurf,(0,0))
         age+=1
@@ -2040,8 +2264,10 @@ def checkEnemySpawn():
     global enemySpawnTick
     if not PASSIVE:
         if enemySpawnTick<=0:
-            enemySpawnTick=200
-            if len(enemies)<MAXENEMYSPAWNS and random.randint(1,5)==1:#reduce enemy spawns
+            enemySpawnTick=100
+            val=int(14-((clientPlayer.pos[1]//BLOCKSIZE)//30))
+            if val<1:val=1
+            if len(enemies)<MAXENEMYSPAWNS+(7-val/2) and random.randint(1,val)==1:#reduce enemy spawns
                 spawnEnemy()
         else:enemySpawnTick-=1
 def spawnEnemy(pos=None,ID=None):
@@ -2053,25 +2279,30 @@ def spawnEnemy(pos=None,ID=None):
         elif clientPlayer.pos[1]>=300*BLOCKSIZE:
             ID=random.randint(3,4)
     if pos == None:
-        spawnRect=Rect(clientPlayer.pos[0]-screenW/2,clientPlayer.pos[1]-screenH/2,screenW,screenH)
+        playerBlockPos=(int(clientPlayer.pos[0])//BLOCKSIZE,int(clientPlayer.pos[1])//BLOCKSIZE)  
         for i in range(500):
-            randompos=(random.randint(int(clientPlayer.pos[0])-screenW,int(clientPlayer.pos[0])+screenW),random.randint(int(clientPlayer.pos[1])-screenH,int(clientPlayer.pos[1])+screenH))
-            if not spawnRect.collidepoint(randompos):
-                blockpos=(math.floor(randompos[1]//BLOCKSIZE),math.floor(randompos[0]//BLOCKSIZE))
-                if onScreen(blockpos[0],blockpos[1],width=2):
-                    if mapData[blockpos[0]][blockpos[1]][0] in uncollidableBlocks:
-                        if mapData[blockpos[0]-1][blockpos[1]][0] in uncollidableBlocks:
-                            if mapData[blockpos[0]+1][blockpos[1]][0] in uncollidableBlocks:
-                                if mapData[blockpos[0]][blockpos[1]-1][0] in uncollidableBlocks:
-                                    if mapData[blockpos[0]][blockpos[1]+1][0] in uncollidableBlocks:
-                                        if mapData[blockpos[0]-1][blockpos[1]-1][0] in uncollidableBlocks:
-                                            if mapData[blockpos[0]-1][blockpos[1]+1][0] in uncollidableBlocks:
-                                                if mapData[blockpos[0]+1][blockpos[1]-1][0] in uncollidableBlocks:
-                                                    if mapData[blockpos[0]+1][blockpos[1]+1][0] in uncollidableBlocks:
-                                                        Enemy(((blockpos[1]+0.5)*BLOCKSIZE,(blockpos[0]+0.5)*BLOCKSIZE),ID)
-                                                        return
-        return
-    else:Enemy(pos,ID)
+            if random.random()<0.5:
+                x=random.randint(playerBlockPos[0]-xMaxBlocks,playerBlockPos[0]+xMaxBlocks)
+                if random.random()<0.5:
+                    y=random.randint(playerBlockPos[1]-yMaxBlocks,playerBlockPos[1]-yMinBlocks)
+                else:
+                    y=random.randint(playerBlockPos[1]+yMinBlocks,playerBlockPos[1]+yMaxBlocks)
+            else:
+                y=random.randint(playerBlockPos[1]-yMaxBlocks,playerBlockPos[1]+yMaxBlocks)
+                if random.random()<0.5:
+                    x=random.randint(playerBlockPos[0]-xMaxBlocks,playerBlockPos[0]-xMinBlocks)
+                else:
+                    x=random.randint(playerBlockPos[0]+xMinBlocks,playerBlockPos[0]+xMaxBlocks)
+            if onScreen(x,y,width=2):
+                if mapData[x][y][0] in uncollidableBlocks:
+                    if mapData[x-1][y][0] in uncollidableBlocks:
+                        if mapData[x][y-1][0] in uncollidableBlocks:
+                            if mapData[x+1][y][0] in uncollidableBlocks:
+                                if mapData[x][y+1][0] in uncollidableBlocks:
+                                    Enemy((x*BLOCKSIZE,y*BLOCKSIZE),ID)
+                                    return
+    else:
+        Enemy(pos,ID)
 def getItemPrefix(prefixCategory):
     return [prefixCategory,prefixData[prefixCategory][random.randint(0,len(prefixData[prefixCategory])-1)]]
 def getSpeedText(speed):
@@ -2283,15 +2514,36 @@ def drawHoldingItem():
         if holdingItem.amnt>1:
             screen.blit(outlineText(str(holdingItem.amnt),(255,255,255),SMALLFONT),(m[0]+34,m[1]+40))
 def drawExitButton():
+    global waitToUse, clientPrompt, quitButtonHover
     top=screenH-20
     left=screenW-50
     if Rect(left,top,50,20).collidepoint(m):
+        if not quitButtonHover:
+            quitButtonHover=True
+            if SFX:
+                sounds[26].play()
         colour=(230,230,0)
         if pygame.mouse.get_pressed()[0]:
-            Exit()
-    else:colour=(255,255,255)
+            clientPlayer.inventoryOpen=False
+            clientPrompt=Prompt("Exit",exitMessages[random.randint(0,len(exitMessages)-1)],button1Name="Yep")
+            waitToUse=True
+    else:
+        colour=(255,255,255)
+        quitButtonHover=False
     text=outlineText("Quit",colour,DEFAULTFONT)
     screen.blit(text,(left,top))
+def colourSurface(greySurf,col):
+    x=greySurf.get_width()
+    y=greySurf.get_height()
+    surf=pygame.Surface((x,y))   
+    surf.fill((255,255,255))
+    surf.set_colorkey((255,255,255))#set the colourkey to white
+    surf.blit(greySurf,(0,0))#create a surf with the given hair and white background
+    colour=pygame.Surface((x,y))
+    colour.fill(col)#create a blank surf with the colour of the hair
+    surf.blit(colour,(0,0),None,BLEND_RGB_ADD)#blit the new surf to the hair with an add blend flag
+    return surf
+    
 noise=perlin.SimplexNoise()#create noise object
 OFFSETS=[random.random()*1000,random.random()*1000,random.random()*1000]#randomly generate offsets
 
@@ -2481,6 +2733,12 @@ helpfulTips=["Watch out for slimes...",
              "Did you hear about the guy whose whole left side was cut off? He's all right now.",
              "I wondered why the baseball was getting bigger. Then it hit me.",
              ]
+
+exitMessages=["Are you sure you want to exit?",
+              "Leaving so soon?",
+              "You'll come back someday right?",
+              "So this is goodbye?",
+    ]
 goodColour=(10,230,10)
 badColour=(230,10,10)
 
@@ -2494,6 +2752,7 @@ enemySpawnTick=0
 #MAX SURF WIDTH IS 16383
 
 loadConfig()#(1920,1080),(1280, 720), (1152, 864), (1024, 768), (800, 600)
+        
 BLOCKSIZE=16
 BIOMEBOARDER_X1=MAPSIZEX/3
 BIOMEBOARDER_X2=MAPSIZEX*2/3
@@ -2503,14 +2762,27 @@ WORLDBOARDER_EAST=int(MAPSIZEX*BLOCKSIZE-BLOCKSIZE)
 WORLDBOARDER_NORTH=int(BLOCKSIZE*1.5)
 WORLDBOARDER_SOUTH=int(MAPSIZEY*BLOCKSIZE-BLOCKSIZE*1.5)
 
-defaultModel=Model(0,random.randint(0,7),(random.randint(0,128),random.randint(0,128),random.randint(0,128)),(0,0,200),(),(),(),())
+xMinBlocks=int((screenW//BLOCKSIZE)/2)# used for calculations when spawning enemies
+xMaxBlocks=int(xMinBlocks*2)
+yMinBlocks=int((screenH//BLOCKSIZE)/2)
+yMaxBlocks=int(yMinBlocks*2)
+
+defaultModel=Model(0,
+                   random.randint(0,8),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,255),random.randint(1,255),random.randint(0,255)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)))
+
 playerWidth=26
 playerHeight=48
 
 loadPlayerData()
 
 loadSaves()
-
 
 if RUNFULLSCREEN:screen=pygame.display.set_mode((screenW,screenH),FULLSCREEN)
 else:screen=pygame.display.set_mode((screenW,screenH))
@@ -2519,7 +2791,7 @@ pygame.display.set_caption("fegaria remastered "+__version__)
 #set to 8000 for creepy mode (48000 norm)
 pygame.mixer.pre_init(48000, -16, 2, 1024)
 pygame.init()
-musicVolume=0.2
+musicVolume=0.1
 
 SONG_END = pygame.USEREVENT+1
 pygame.mixer.music.set_endevent(SONG_END)
@@ -2530,6 +2802,7 @@ if MUSIC:
     pygame.mixer.music.play()
 
 if SFX:
+    soundVolume=0.5
     sounds=[]
     sounds.append(pygame.mixer.Sound("Sound/Tink_0.wav"))#0
     sounds.append(pygame.mixer.Sound("Sound/Tink_1.wav"))#1
@@ -2555,8 +2828,12 @@ if SFX:
     sounds.append(pygame.mixer.Sound("Sound/Run_1.wav"))#21
     sounds.append(pygame.mixer.Sound("Sound/Run_2.wav"))#22
     sounds.append(pygame.mixer.Sound("Sound/Coins.wav"))#23
+    sounds.append(pygame.mixer.Sound("Sound/Menu_Open.wav"))#24
+    sounds.append(pygame.mixer.Sound("Sound/Menu_Close.wav"))#25
+    sounds.append(pygame.mixer.Sound("Sound/Mech_0.wav"))#26
+    sounds.append(pygame.mixer.Sound("Sound/Chat.wav"))#27
     for sound in sounds:
-        sound.set_volume(0.5)
+        sound.set_volume(soundVolume)
 
 
 
@@ -2586,7 +2863,7 @@ if SPLASHSCREEN:
     runSplashScreen()
     
 screen.fill((0,0,0))
-text0=outlineText("Greetings "+clientPlayer.name+", bare with us while",(255,255,255),LARGEFONT)
+text0=outlineText("Greetings "+clientPlayer.name+", bear with us while",(255,255,255),LARGEFONT)
 text1=outlineText("we load up '"+clientWorld.name+"'...",(255,255,255),LARGEFONT)
 text2=outlineText(helpfulTips[random.randint(0,len(helpfulTips)-1)],(255,255,255),DEFAULTFONT)
 screen.blit(text0,(screenW/2-text0.get_width()/2,screenH/2-30))
@@ -2616,13 +2893,18 @@ holdingItemBool=False
 holdingItem=None
 canDropHolding=False
 canPickupItem=False
+waitToUse=False
+quitButtonHover=False
 
 clientPlayer.renderCurrentItemImage()
 clientPlayer.renderHotbar()
 clientPlayer.renderInventory()
-fpsText=outlineText(str(int(fps)),(255,255,255),DEFAULTFONT)
+fpsText=outlineText(str(clientPlayer.pos[0]//BLOCKSIZE)+" "+str(clientPlayer.pos[1]//BLOCKSIZE)+" "+str(int(fps)),(255,255,255),DEFAULTFONT)
 renderHandText()
 
+clientPrompt=None
+
+frame=2
 while 1:
     fps=clock.get_fps()
     try:
@@ -2642,6 +2924,11 @@ while 1:
     clientPlayer.update()
     clientPlayer.animate()
     updateDamageNumbers()
+    if clientPrompt!=None:
+        clientPrompt.update()
+        if clientPrompt.close==True:
+            clientPrompt=None
+            waitToUse=True
     
     if BACKGROUND:
         if fadeBack:
@@ -2659,15 +2946,17 @@ while 1:
         screen.fill((135,206,250))
         
     screen.blit(mainSurf,(screenW/2-clientPlayer.pos[0],screenH/2-clientPlayer.pos[1]))
-    
-    clientPlayer.draw()
     drawParticles()
+    drawProjectiles()
+    clientPlayer.draw()
     drawEnemies()
     drawPhysicsItems()
-    drawProjectiles()
     drawDamageNumbers()
     drawMessages()
     checkEnemyHover()
+
+    if clientPrompt!=None:
+        clientPrompt.draw()
     if not clientPlayer.alive:
         drawDeathMessage()
     screen.blit(fpsText,(screenW-fpsText.get_width(),0))
@@ -2693,10 +2982,12 @@ while 1:
 
     if fpsTick<=0:
         fpsTick=100
-        fpsText=outlineText(str(int(fps)),(255,255,255),DEFAULTFONT)
+        fpsText=outlineText(str((clientPlayer.pos[0]+m[0]-screenW/2)//BLOCKSIZE)+" "+str((clientPlayer.pos[1]+m[1]-screenH/2)//BLOCKSIZE)+" "+str(int(fps)),(255,255,255),DEFAULTFONT)
     else:fpsTick-=1
 
     if not pygame.mouse.get_pressed()[0]:
+        if waitToUse:
+            waitToUse=False
         if holdingItemBool:
             canDropHolding=True
         elif not holdingItemBool:
@@ -2704,7 +2995,9 @@ while 1:
         
     for event in pygame.event.get():
         if event.type==QUIT:
-            Exit()
+            clientPlayer.inventoryOpen=False
+            clientPrompt=Prompt("Exit",exitMessages[random.randint(0,len(exitMessages)-1)],button1Name="Yep")
+            waitToUse=True
         if event.type==SONG_END:
             pygame.mixer.music.load("Sound/day.mp3")
             pygame.mixer.music.set_volume(musicVolume)
@@ -2714,18 +3007,27 @@ while 1:
                 shift=True
             if event.key==K_ESCAPE:
                 if clientPlayer.inventoryOpen:
+                    if SFX:
+                        sounds[25].play()
                     clientPlayer.inventoryOpen=False
                 else:
+                    if SFX:
+                        sounds[24].play()
                     clientPlayer.inventoryOpen=True
+                    clientPrompt=None
             if event.key==K_a:
                 clientPlayer.movingLeft=True
-                clientPlayer.animationFrame=random.randint(25,36)
+                clientPlayer.animationFrame=random.randint(17,29)
+                if not clientPlayer.armSwing:
+                    clientPlayer.armAnimationFrame=random.randint(26,39)
                 if clientPlayer.direction==1:
                     clientPlayer.itemSwing=False
                 clientPlayer.direction=0
             if event.key==K_d:
                 clientPlayer.movingRight=True
-                clientPlayer.animationFrame=random.randint(5,17)
+                clientPlayer.animationFrame=random.randint(2,15)
+                if not clientPlayer.armSwing:
+                    clientPlayer.armAnimationFrame=random.randint(6,19)
                 if clientPlayer.direction==0:
                     clientPlayer.itemSwing=False
                 clientPlayer.direction=1
@@ -2751,10 +3053,17 @@ while 1:
                         clientPlayer.vel=(clientPlayer.vel[0],-8.5)
                         clientPlayer.grounded=False
             if event.key==K_r:
-                clientPlayer.model.hairCol=(random.randint(0,128),random.randint(0,128),random.randint(0,128))
-                clientPlayer.model.hairID=random.randint(0,7)
+                clientPlayer.model=Model(0,
+                   random.randint(0,8),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,255),random.randint(1,255),random.randint(0,255)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
+                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)))
                 clientPlayer.renderSprites()
-                message("Hair randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
+                message("Player randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
             if event.key==K_j:
                 if PARTICLES:
                     for i in range(int(40*PARTICLEDENSITY)):
@@ -2763,13 +3072,15 @@ while 1:
                     sounds[12].play()
                 clientPlayer.respawn()
             if event.key==K_g:
-                GRAVITY=-GRAVITY;print("Gravity Reversed")
+                GRAVITY=-GRAVITY;message("Gravity Reversed!",(255,255,255))
             if event.key==K_p:
                 if clientPlayer.hotbar[clientPlayer.hotbarIndex]!=None:
                     clientPlayer.hotbar[clientPlayer.hotbarIndex]=Item(clientPlayer.hotbar[clientPlayer.hotbarIndex].ID)
                     message("Item prefix randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
                     clientPlayer.renderCurrentItemImage()
                     renderHandText()
+            if event.key==K_o:
+                clientPrompt=Prompt("test","My name's the guide, I can help you around this awfully crafted world. It's basically just a rip off of terraria so this should be child's play")
                 
             if event.key==K_1:clientPlayer.hotbarIndex=0;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
             if event.key==K_2:clientPlayer.hotbarIndex=1;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
@@ -2781,16 +3092,29 @@ while 1:
             if event.key==K_8:clientPlayer.hotbarIndex=7;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
             if event.key==K_9:clientPlayer.hotbarIndex=8;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
             if event.key==K_0:clientPlayer.hotbarIndex=9;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-
+            if SFX:
+                if event.key==K_1 or event.key==K_2 or event.key==K_3 or event.key==K_4 or event.key==K_5 or event.key==K_6 or event.key==K_7 or event.key==K_8 or event.key==K_9 or event.key==K_0:
+                    sounds[26].play()
             if event.key==K_UP and shift:
                 musicVolume+=0.05
                 if musicVolume>1:musicVolume=1
                 pygame.mixer.music.set_volume(musicVolume)
+                message("Music volume set to "+str(round(musicVolume,2)),(255,255,255))
             if event.key==K_DOWN and shift:
                 musicVolume-=0.05
                 if musicVolume<0:musicVolume=0
                 pygame.mixer.music.set_volume(musicVolume)
-
+                message("Music volume set to "+str(round(musicVolume,2)),(255,255,255))
+            if event.key==K_LEFT and shift:
+                soundVolume-=0.05
+                for sound in sounds:
+                    sound.set_volume(soundVolume)
+                message("Sound volume set to "+str(round(soundVolume,2)),(255,255,255))
+            if event.key==K_RIGHT and shift:
+                soundVolume+=0.05
+                for sound in sounds:
+                    sound.set_volume(soundVolume)
+                message("Sound volume set to "+str(round(soundVolume,2)),(255,255,255))
         if event.type==KEYUP:
             if event.key==K_a:
                 clientPlayer.movingLeft=False
@@ -2807,13 +3131,21 @@ while 1:
             if event.button==4:
                 if clientPlayer.hotbarIndex>0:
                     clientPlayer.hotbarIndex-=1
-                    clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                    clientPlayer.renderCurrentItemImage()
+                    clientPlayer.itemSwing=False
+                    renderHandText()
+                    if SFX:
+                        sounds[26].play()
                 else:
                     clientPlayer.hotbarIndex=9
             if event.button==5:
                 if clientPlayer.hotbarIndex<9:
                     clientPlayer.hotbarIndex+=1
-                    clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                    clientPlayer.renderCurrentItemImage()
+                    clientPlayer.itemSwing=False
+                    renderHandText()
+                    if SFX:
+                        sounds[26].play()
                 else:
                     clientPlayer.hotbarIndex=0
     pygame.display.flip()

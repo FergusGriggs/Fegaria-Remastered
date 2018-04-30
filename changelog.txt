@@ -1,3 +1,10 @@
+29-30/04.2018-v0.0.6----------------------------------
+-added prompts
+-added health bar
+-completely reworked character animation and added full charaacter randomization
+-improved pickaxe functionality (can swing easier)
+-improved/fixed enemy spawns (used to fly through world as they were spawned incorrectly)
+-fixed spellings
 24-28/04/2018-v0.0.5----------------------------------
 -compete ui rework
 -added inventory
