@@ -1,7 +1,9 @@
-29-30/04.2018-v0.0.6----------------------------------
+01-02/05/2018-v0.0.7----------------------------------
+-added a main menu
+-added gui for world creation, world selection, player creation, player selection etc
+29-30/04/2018-v0.0.6----------------------------------
 -added prompts
 -added health bar
--completely reworked character animation and added full charaacter randomization
 -improved pickaxe functionality (can swing easier)
 -improved/fixed enemy spawns (used to fly through world as they were spawned incorrectly)
 -fixed spellings

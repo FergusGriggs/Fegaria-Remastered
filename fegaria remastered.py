@@ -1,9 +1,9 @@
 #fegaria remastered
 __author__="Fergus Griggs"
 __email__="fbob987 at gmail dot com"
-__version__="0.0.5"
+__version__="0.0.6"
 
-import pygame, sys, math, time, os, random, perlin, pickle, datetime
+import pygame, sys, math, time, os, random, perlin, pickle, datetime, webbrowser
 from pygame.locals import *
 
 def moveParallax(val):
@@ -29,7 +29,7 @@ def loadMiscGui():
     miscGuiImages=[]
     miscTilesetimg=pygame.image.load("Textures/miscTileset.png").convert()
     for j in range(1):
-        for i in range(10):
+        for i in range(11):
             surf=pygame.Surface((48,48))
             surf.set_colorkey((255,0,255))
             surf.blit(miscTilesetimg,(-i*48,-j*48))
@@ -150,7 +150,6 @@ class Model():#used to store info about the player's looks (fairly useless atm)
         self.underShirtCol=underShirtCol
         self.trouserCol=trouserCol
         self.shoeCol=shoeCol
-
 class Enemy():
     def __init__(self,pos,enemyID):
         self.pos=pos
@@ -382,7 +381,9 @@ class Player():#stores all info about a player
         else:self.inventory=inventory
         self.miningTick=0
         self.playTime=playTime
-        self.renderSprites()
+        sprites=Player.renderSprites(self.model)
+        self.sprites=sprites[0]
+        self.armSprites=sprites[1]
         self.animationTick=0
         self.animationTick2=0
         self.armAnimationFrame=0
@@ -390,10 +391,12 @@ class Player():#stores all info about a player
         self.animationFrame=5#which frame to blit
         self.alive=True
         self.respawnTick=0#how long till respawn
-        self.HP=100
-        self.maxHP=self.HP
-        self.hpText=outlineText(str(self.HP),(0,255,0),DEFAULTFONT,outlineColour=(0,180,0))
-        self.hpXpos=screenW-10-100-self.hpText.get_width()/2
+        if HP==0:self.HP=maxHP
+        else:self.HP=HP
+        self.maxHP=maxHP
+        hpcol=(255*(1-self.HP/self.maxHP),255*(self.HP/self.maxHP),0)
+        self.hpText=outlineText(str(self.HP),hpcol,DEFAULTFONT,outlineColour=(hpcol[0]*0.5,hpcol[1]*0.5,hpcol[2]*0.5))
+        self.hpXpos=screenW-10-self.HP-self.hpText.get_width()/2
         self.grounded=True
         self.movingLeft=False
         self.movingRight=False
@@ -680,31 +683,30 @@ class Player():#stores all info about a player
                 elif self.direction==1:
                     self.armAnimationFrame=5
                     
-    def renderSprites(self):#create an array of surfs for the current character used for animation/blitting
+    def renderSprites(model,directions=2,armFrameCount=20,torsoFrameCount=15):#create an array of surfs for the current character used for animation/blitting
         
-        self.sprites=[]
-        self.armSprites=[]
-        
-        for j in range(2):#for both directions
-            hair=colourSurface(hairStyles[self.model.hairID],self.model.hairCol)
+        sprites=[]
+        armSprites=[]
+        for j in range(directions):#for both directions
+            hair=colourSurface(hairStyles[model.hairID],model.hairCol)
             if j==1:#flip if necessary
                 hair=pygame.transform.flip(hair,True,False)
-            torso=colourSurface(torsoFrames[0],self.model.shirtCol)
+            torso=colourSurface(torsoFrames[0],model.shirtCol)
             if j==0:#flip if necessary
                 torso=pygame.transform.flip(torso,True,False)
-            head=colourSurface(hairStyles[9],self.model.skinCol)
+            head=colourSurface(hairStyles[9],model.skinCol)
             pygame.draw.rect(head,(255,254,255),Rect(20,22,4,4),0)
-            pygame.draw.rect(head,self.model.eyeCol,Rect(22,22,2,4),0)
+            pygame.draw.rect(head,model.eyeCol,Rect(22,22,2,4),0)
             if j==1:#flip if necessary
                 head=pygame.transform.flip(head,True,False)
-            for i in range(15):#all animation frames for one direction
+            for i in range(torsoFrameCount):#all animation frames for one direction
                 bodySurf=pygame.Surface((44,75))
                 bodySurf.fill((255,0,255))
                 bodySurf.set_colorkey((255,0,255))#create the surf for the whole player with a colourkey of (255,0,255)
-                trousers=colourSurface(torsoFrames[i+1],self.model.trouserCol)
+                trousers=colourSurface(torsoFrames[i+1],model.trouserCol)
                 if j==0:#flip if necessary
                     trousers=pygame.transform.flip(trousers,True,False)
-                shoes=colourSurface(torsoFrames[i+16],self.model.shoeCol)
+                shoes=colourSurface(torsoFrames[i+16],model.shoeCol)
                 if j==0:#flip if necessary
                     shoes=pygame.transform.flip(shoes,True,False)
                 bodySurf.blit(torso,(0,4))
@@ -713,25 +715,25 @@ class Player():#stores all info about a player
                 bodySurf.blit(head,(0,0))
                 bodySurf.blit(hair,(0,0))
                 
-                self.sprites.append(bodySurf)
-            for i in range(20):#all animation frames for one direction
+                sprites.append(bodySurf)
+            for i in range(armFrameCount):#all animation frames for one direction
                 armSurf=pygame.Surface((44,75))
                 armSurf.fill((255,0,255))
                 armSurf.set_colorkey((255,0,255))
 
-                arms=colourSurface(torsoFrames[i+31],self.model.underShirtCol)
+                arms=colourSurface(torsoFrames[i+31],model.underShirtCol)
                 if j==0:#flip if necessary
                     arms=pygame.transform.flip(arms,True,False)
                     
-                hands=colourSurface(torsoFrames[i+51],self.model.skinCol)
+                hands=colourSurface(torsoFrames[i+51],model.skinCol)
                 if j==0:#flip if necessary
                     hands=pygame.transform.flip(hands,True,False)
                 
                 armSurf.blit(arms,(0,4))
                 armSurf.blit(hands,(0,4))
 
-                self.armSprites.append(armSurf)
-                
+                armSprites.append(armSurf)
+        return [sprites,armSprites]
                 
     def useItem(self,alt=False):
         global mapData
@@ -741,38 +743,39 @@ class Player():#stores all info about a player
             if "block" in item.tags:
                 if math.sqrt((screenW/2-m[0])**2+(screenH/2-m[1])**2)<BLOCKSIZE*6 or CREATIVE:
                     blockpos=(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
-                    blockrect=Rect(BLOCKSIZE*blockpos[0],BLOCKSIZE*blockpos[1]+1,BLOCKSIZE,BLOCKSIZE)
-                    if not blockrect.colliderect(clientPlayer.rect):
-                        if shift:
-                            if mapData[blockpos[0]][blockpos[1]][1]==-1:
-                                if getNeighborCount(blockpos[0],blockpos[1],tile=1)>0:
-                                    if not CREATIVE:
-                                        self.hotbar[self.hotbarIndex].amnt-=1
-                                        dat=["H",self.hotbarIndex]
-                                        if dat not in self.oldInventoryPositions:
-                                            self.oldInventoryPositions.append(dat)
-                                        if self.hotbar[self.hotbarIndex].amnt<=0:
-                                            self.hotbar[self.hotbarIndex]=None
-                                    mapData[blockpos[0]][blockpos[1]][1]=item.ID
-                                    updateSurface(blockpos[0],blockpos[1])
-                                    if SFX:
-                                        playHitSfx(item.ID)
-                                    swing=True
-                        else:
-                            if mapData[blockpos[0]][blockpos[1]][0]==-1:
-                                if getNeighborCount(blockpos[0],blockpos[1])>0:
-                                    if not CREATIVE:
-                                        self.hotbar[self.hotbarIndex].amnt-=1
-                                        dat=["H",self.hotbarIndex]
-                                        if dat not in self.oldInventoryPositions:
-                                            self.oldInventoryPositions.append(dat)
-                                        if self.hotbar[self.hotbarIndex].amnt<=0:
-                                            self.hotbar[self.hotbarIndex]=None
-                                    mapData[blockpos[0]][blockpos[1]][0]=item.ID
-                                    updateSurface(blockpos[0],blockpos[1])
-                                    if SFX:
-                                        playHitSfx(item.ID)
-                                    swing=True
+                    if onScreen(blockpos[0],blockpos[1]):
+                        blockrect=Rect(BLOCKSIZE*blockpos[0],BLOCKSIZE*blockpos[1]+1,BLOCKSIZE,BLOCKSIZE)
+                        if not blockrect.colliderect(clientPlayer.rect):
+                            if shift:
+                                if mapData[blockpos[0]][blockpos[1]][1]==-1:
+                                    if getNeighborCount(blockpos[0],blockpos[1],tile=1)>0:
+                                        if not CREATIVE:
+                                            self.hotbar[self.hotbarIndex].amnt-=1
+                                            dat=["H",self.hotbarIndex]
+                                            if dat not in self.oldInventoryPositions:
+                                                self.oldInventoryPositions.append(dat)
+                                            if self.hotbar[self.hotbarIndex].amnt<=0:
+                                                self.hotbar[self.hotbarIndex]=None
+                                        mapData[blockpos[0]][blockpos[1]][1]=item.ID
+                                        updateSurface(blockpos[0],blockpos[1])
+                                        if SFX:
+                                            playHitSfx(item.ID)
+                                        swing=True
+                            else:
+                                if mapData[blockpos[0]][blockpos[1]][0]==-1:
+                                    if getNeighborCount(blockpos[0],blockpos[1])>0:
+                                        if not CREATIVE:
+                                            self.hotbar[self.hotbarIndex].amnt-=1
+                                            dat=["H",self.hotbarIndex]
+                                            if dat not in self.oldInventoryPositions:
+                                                self.oldInventoryPositions.append(dat)
+                                            if self.hotbar[self.hotbarIndex].amnt<=0:
+                                                self.hotbar[self.hotbarIndex]=None
+                                        mapData[blockpos[0]][blockpos[1]][0]=item.ID
+                                        updateSurface(blockpos[0],blockpos[1])
+                                        if SFX:
+                                            playHitSfx(item.ID)
+                                        swing=True
 
             elif "pickaxe" in item.tags:
                 if self.canUse or CREATIVE:
@@ -789,24 +792,24 @@ class Player():#stores all info about a player
                         if shift:datIndex=1#wall or block being clicked
                         else:datIndex=0
                         blockpos=(int((m[0]+clientPlayer.pos[0]-screenW/2)//BLOCKSIZE),int((m[1]+clientPlayer.pos[1]-screenH/2)//BLOCKSIZE))
-                        tile=mapData[blockpos[0]][blockpos[1]][datIndex]
-                        if tile!=-1:
-                            if tile==5:
-                                mapData[blockpos[0]][blockpos[1]][datIndex]=0
-                            else:
-                                mapData[blockpos[0]][blockpos[1]][datIndex]=-1
-                                PhysicsItem(((blockpos[0]+0.5)*BLOCKSIZE,(blockpos[1]+0.5)*BLOCKSIZE),tile,pickupDelay=0)
-                            updateSurface(blockpos[0],blockpos[1])
-                            if tile in platformBlocks:  
-                                colour=pygame.transform.average_color(tileImages[tile],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
-                            else:colour=pygame.transform.average_color(tileImages[tile])
-                            
-                            if SFX:
-                                playHitSfx(tile)
-                            if PARTICLES:
-                                for i in range(int(random.randint(2,3)*PARTICLEDENSITY)):
-                                    Particle(m,colour,size=10,life=100,angle=-math.pi/2,spread=math.pi,GRAV=0.05)
-                    
+                        if onScreen(blockpos[0],blockpos[1]):
+                            tile=mapData[blockpos[0]][blockpos[1]][datIndex]
+                            if tile!=-1:
+                                if tile==5:
+                                    mapData[blockpos[0]][blockpos[1]][datIndex]=0
+                                else:
+                                    mapData[blockpos[0]][blockpos[1]][datIndex]=-1
+                                    PhysicsItem(((blockpos[0]+0.5)*BLOCKSIZE,(blockpos[1]+0.5)*BLOCKSIZE),tile,pickupDelay=0)
+                                updateSurface(blockpos[0],blockpos[1])
+                                if tile in platformBlocks:  
+                                    colour=pygame.transform.average_color(tileImages[tile],Rect(BLOCKSIZE/8,BLOCKSIZE/8,BLOCKSIZE*3/4,BLOCKSIZE/4))
+                                else:colour=pygame.transform.average_color(tileImages[tile])
+                                
+                                if SFX:
+                                    playHitSfx(tile)
+                                if PARTICLES:
+                                    for i in range(int(random.randint(2,3)*PARTICLEDENSITY)):
+                                        Particle(m,colour,size=10,life=100,angle=-math.pi/2,spread=math.pi,GRAV=0.05)
             elif "melee" in item.tags:
                 if self.canUse:
                     self.enemiesHit=[]
@@ -1095,7 +1098,10 @@ class Particle():
         
     def update(self):
         self.vel=(self.vel[0]*0.95,self.vel[1]*0.95+self.GRAV)
-        self.pos=(self.pos[0]+self.vel[0]-clientPlayer.posDiff[0],self.pos[1]+self.vel[1]-clientPlayer.posDiff[1])
+        if clientPlayer!=None:
+            self.pos=(self.pos[0]+self.vel[0]-clientPlayer.posDiff[0],self.pos[1]+self.vel[1]-clientPlayer.posDiff[1])
+        else:
+            self.pos=(self.pos[0]+self.vel[0],self.pos[1]+self.vel[1])
         self.life-=1#change life
         self.size=self.initSize*self.life/self.initLife#change size based on life and initial size
         if self.life<=0:#if life<=0 remove the particle
@@ -1374,10 +1380,16 @@ def playHitSfx(tile,volume=1):
     elif tile==5 or tile==11 or tile==12:
         sounds[10].play()
         
-def generateTerrain(genType):
-    global mapData, tileMaskData, wallTileMaskData, backgroundID, worldName, clientWorld
-    print("WARNING: Using the same name as an existing world will overwrite it!\n")
-    worldName=str(input("Enter new world name: "))
+def generateTerrain(genType,name,MAPSIZEX,MAPSIZEY,blitProgress=False):
+    global mapData, clientWorld, worldName
+    BIOMEBOARDER_X1=MAPSIZEX/3
+    BIOMEBOARDER_X2=MAPSIZEX*2/3
+    WORLDBOARDER_WEST=int(BLOCKSIZE)
+    WORLDBOARDER_EAST=int(MAPSIZEX*BLOCKSIZE-BLOCKSIZE)
+    WORLDBOARDER_NORTH=int(BLOCKSIZE*1.5)
+    WORLDBOARDER_SOUTH=int(MAPSIZEY*BLOCKSIZE-BLOCKSIZE*1.5)
+    worldName=name
+    mapData=[[-1 for i in range(MAPSIZEY)] for i in range(MAPSIZEX)]
     tileMaskData=[[-1 for i in range(MAPSIZEY)] for i in range(MAPSIZEX)]
     wallTileMaskData=[[-1 for i in range(MAPSIZEY)] for i in range(MAPSIZEX)]
     date=datetime.datetime.now()
@@ -1396,7 +1408,8 @@ def generateTerrain(genType):
     elif genType=="DEFAULT":
         print("genType: "+genType)
         print("Worldsize: "+str(MAPSIZEX*MAPSIZEY)+" blocks. ("+str(MAPSIZEX)+"x"+str(MAPSIZEY)+")\n")
-        print("Generating Terrain...")
+        if blitProgress:
+            blitGenerationStage("Generating Terrain...")
         mapData=[]
         backgroundID=3
         for i in range(MAPSIZEX):
@@ -1444,12 +1457,14 @@ def generateTerrain(genType):
                         if mapData[i][j-1][0]==-1 and bval==int(biomeTileVals[biome][0][1]):bval=int(biomeTileVals[biome][0][0]);wval=int(biomeTileVals[biome][1][0])
                     else:bval=-1
                 mapData[i].append([bval,wval])
-        print("Spawning ores...")
+        if blitProgress:
+            blitGenerationStage("Spawning ores...")
         for i in range(int(MAPSIZEX*MAPSIZEY/1200)):
             createVein(random.randint(0,MAPSIZEX-1),random.randint(70,500),7,random.randint(2,4))
         for i in range(int(MAPSIZEX*MAPSIZEY/1200)):
             createVein(random.randint(0,MAPSIZEX-1),random.randint(70,500),6,random.randint(2,4))
-        print("Growing Trees...")
+        if blitProgress:
+            blitGenerationStage("Growing Trees...")
         for i in range(int(MAPSIZEX/5)):
             if random.randint(1,2)==1:
                 createTree(i*5,0,random.randint(5,15))
@@ -1778,7 +1793,7 @@ class PhysicsItem():
             pygame.draw.rect(screen,(255,0,0),Rect(self.rect.left-clientPlayer.pos[0]+screenW/2,self.rect.top-clientPlayer.pos[1]+screenH/2,self.rect.width,self.rect.height),1)
             
 class Prompt():
-    def __init__(self,name,body,button1Name=None,shop=False,shopItems=None,size=(10,3),NPC=True):
+    def __init__(self,name,body,button1Name=None,shop=False,shopItems=None,size=(10,3),NPC=True,pos=None):
         self.name=name
         self.body=body
         
@@ -1797,10 +1812,14 @@ class Prompt():
         
         self.width=self.bodySurf.get_width()
         self.height=self.bodySurf.get_height()
-        
-        self.left=screenW/2-self.width/2
-        self.top=screenH*2/7-self.height/2
-        self.bot=self.top+self.height-30
+        if pos==None:
+            self.left=screenW/2-self.width/2
+            self.top=screenH*2/7-self.height/2
+            self.bot=self.top+self.height-30
+        else:
+            self.left=pos[0]
+            self.top=pos[1]
+            self.bot=pos[1]+self.height-30
         if SFX:
             if NPC:
                 sounds[27].play()
@@ -1808,6 +1827,7 @@ class Prompt():
                 sounds[24].play()
         
     def update(self):
+        global gameState, gameSubState, mainSurf
         offsetx=10
         if self.shop:
             if Rect(self.left+offsetx,self.bot,60,20).collidepoint(m):
@@ -1849,7 +1869,12 @@ class Prompt():
                 
         if self.name=="Exit":
             if self.button1Pressed:
-                Exit()
+                Save()
+                gameState="MAINMENU"
+                gameSubState="MAIN"
+                mainSurf=pygame.Surface((1,1))
+                loadAllMenuData()
+                self.close=True
             
     def draw(self):
         screen.blit(self.bodySurf,(self.left,self.top))
@@ -1870,7 +1895,79 @@ class Prompt():
         if self.closeHover:
             closeCol=(255,255,255)
         screen.blit(outlineText("Close",closeCol,DEFAULTFONT),(self.left+offsetx,self.bot))
+        
+class ColourPicker():
+   def __init__(self,pos,width,height,boarderSize=5,surfaceResolution=0.5):
+      self.pos=pos
+      self.width=width
+      self.height=height
+      self.sectionWidth=width/6
+      self.boarderSize=boarderSize
+      self.surfaceResolution=surfaceResolution
+      self.colours=[
+         (255,0  ,255),
+         (255,0  ,0  ),
+         (255,255,0  ),
+         (0  ,255,0  ),
+         (0  ,255,255),
+         (0  ,0  ,255),
+         (255,0  ,255)
+         ]
+      self.selectedColour=(0,0,0)
+      self.selectedX=0
+      self.selectedY=height
+      self.renderSurface()
+      self.rect=Rect(self.pos[0]+self.boarderSize,self.pos[1]+self.boarderSize,width,height)
+   def renderSurface(self):
+      self.surface=pygame.Surface((self.width+self.boarderSize*2,self.height+self.boarderSize*2))
+      #draw border
+      pygame.draw.rect(self.surface,(90,90,90),Rect(0,0,self.width+self.boarderSize*2,self.height+self.boarderSize*2),0)
+      pygame.draw.rect(self.surface,(128,128,128),Rect(2,2,self.width+self.boarderSize*2-4,self.height+self.boarderSize*2-4),0)
+      pygame.draw.rect(self.surface,(110,110,110),Rect(4,4,self.width+self.boarderSize*2-8,self.height+self.boarderSize*2-8),0)
+      
+      surf=pygame.Surface((int(self.width*self.surfaceResolution),int(self.height*self.surfaceResolution)))
+      for j in range(int(self.height*self.surfaceResolution)):
+         for i in range(int(self.width*self.surfaceResolution)):
+            surf.set_at((i,j),self.getColour(i/self.surfaceResolution,j/self.surfaceResolution))
+      surf=pygame.transform.scale(surf,(self.width,self.height))
+      self.surface.blit(surf,(self.boarderSize,self.boarderSize))
+   def getColour(self,i,j):
+      baseCol=int(i//self.sectionWidth)#colour to the left of the point
+      nextCol=(baseCol+1)#colour to the right of the point
+      blend=(i%self.sectionWidth)/self.sectionWidth
+      shade=1-j/self.height
 
+      col=[0,0,0]
+
+      for index in range(3):
+         baseColour=int(self.colours[baseCol][index])
+         nextColour=int(self.colours[nextCol][index])
+      
+         channel=int(round(baseColour*(1-blend)+nextColour*blend))
+         if shade<0.5:
+            channel=int(channel*shade*2)
+         elif shade >0.5:
+            newShade=shade-0.5
+            channel=int(channel*(0.5-newShade)*2+255*newShade*2)
+            
+         col[index]=channel
+
+      return tuple(col)
+   def update(self):
+      m=pygame.mouse.get_pos()
+      x=m[0]-self.pos[0]
+      y=m[1]-self.pos[1]
+      if pygame.mouse.get_pressed()[0] and not waitToUse:
+         if self.rect.collidepoint(m):
+            self.selectedColour=self.getColour(x-self.boarderSize,y-self.boarderSize)
+            self.selectedColour=(self.selectedColour[0]*0.5,self.selectedColour[1]*0.5,self.selectedColour[2]*0.5)
+            self.selectedX=x
+            self.selectedY=y
+   def draw(self):
+      screen.blit(self.surface,self.pos)
+      if self.selectedX!=None and self.selectedY!=None:
+          pygame.draw.circle(screen,(128,128,128),(self.selectedX+self.pos[0],self.selectedY+self.pos[1]),5,1)
+      
 def createPromptSurf(width,height,body):#measurements in multiples of 48px
     surf=pygame.Surface((width*48,height*48))
     surf.fill((255,0,255))
@@ -1915,7 +2012,8 @@ def createPromptSurf(width,height,body):#measurements in multiples of 48px
     return surf
             
 def Exit():
-    Save()
+    if gameState=="PLAYING":
+        Save()
     pygame.quit()
     print("\nRunning slowly? try turning off the particles, \nbackground or lowering the resolution")
     sys.exit()
@@ -1978,7 +2076,7 @@ def createTree(i,j,height):
     mapData[i+1][j+1][0]=int(block2)
     
 def loadConfig():#get all settings from config file
-    global MAPSIZEX, MAPSIZEY, GRAVITY, screenW, screenH, RUNFULLSCREEN, PARTICLES,PARTICLEDENSITY, MUSIC, SFX, CREATIVE, BACKGROUND, PARALLAXAMNT, PASSIVE, MAXENEMYSPAWNS,FANCYTEXT, HITBOXES, SPLASHSCREEN
+    global GRAVITY, screenW, screenH, RUNFULLSCREEN, PARTICLES,PARTICLEDENSITY, MUSIC, SFX, CREATIVE, BACKGROUND, PARALLAXAMNT, PASSIVE, MAXENEMYSPAWNS,FANCYTEXT, HITBOXES, SPLASHSCREEN
     
     config=open("CONFIG.txt","r")
     configDataStr=config.readlines()
@@ -1988,22 +2086,20 @@ def loadConfig():#get all settings from config file
         configData.append(item[1][:-1])
     screenW=int(configData[0].split(",")[0])
     screenH=int(configData[0].split(",")[1])
-    MAPSIZEX=int(configData[1].split(",")[0])
-    MAPSIZEY=int(configData[1].split(",")[1])
-    GRAVITY=float(configData[2])
-    RUNFULLSCREEN=bool(int(configData[3]))
-    PARTICLES=bool(int(configData[4]))
-    PARTICLEDENSITY=float(configData[5])
-    MUSIC=bool(int(configData[6]))
-    SFX=bool(int(configData[7]))
-    CREATIVE=bool(int(configData[8]))
-    BACKGROUND=bool(int(configData[9]))
-    PARALLAXAMNT=float(configData[10])
-    PASSIVE=bool(int(configData[11]))
-    MAXENEMYSPAWNS=int(configData[12])
-    FANCYTEXT=bool(int(configData[13]))
-    HITBOXES=bool(int(configData[14]))
-    SPLASHSCREEN=bool(int(configData[15]))
+    GRAVITY=float(configData[1])
+    RUNFULLSCREEN=bool(int(configData[2]))
+    PARTICLES=bool(int(configData[3]))
+    PARTICLEDENSITY=float(configData[4])
+    MUSIC=bool(int(configData[5]))
+    SFX=bool(int(configData[6]))
+    CREATIVE=bool(int(configData[7]))
+    BACKGROUND=bool(int(configData[8]))
+    PARALLAXAMNT=float(configData[9])
+    PASSIVE=bool(int(configData[10]))
+    MAXENEMYSPAWNS=int(configData[11])
+    FANCYTEXT=bool(int(configData[12]))
+    HITBOXES=bool(int(configData[13]))
+    SPLASHSCREEN=bool(int(configData[14]))
 
 def changeBackground():#check if player has moved biome and change background
     global backgroundTick
@@ -2062,6 +2158,7 @@ def runSplashScreen():
     age=0
     text=outlineText("A Fergus Griggs game...",(255,255,255),LARGEFONT)
     blackSurf=pygame.Surface((screenW,screenH))
+    sprites=Player.renderSprites(defaultModel,directions=1)
     frame=2
     frame2=6
     xpos=-30
@@ -2092,8 +2189,8 @@ def runSplashScreen():
             if PARTICLES:
                 Particle((xpos+playerWidth,screenH*3/4+playerHeight*1.15),(255,255,255),GRAV=-0.1,size=10,angle=math.pi,spread=math.pi,magnitude=1)
             xpos+=screenW/290
-            screen.blit(clientPlayer.sprites[frame],(xpos,screenH*3/4))
-            screen.blit(clientPlayer.armSprites[frame2],(xpos,screenH*3/4))
+            screen.blit(sprites[0][frame],(xpos,screenH*3/4))
+            screen.blit(sprites[1][frame2],(xpos,screenH*3/4))
         elif age>450 and age<600:
             updateParticles()
             alpha=(age-450)/150*255
@@ -2192,12 +2289,24 @@ def renderStatsText(pos):
 def getNeighborCount(i,j,tile=0):#used to work out if a block can be placed at a position based on neighbors
     if CREATIVE:return 1
     neighborCount=0
-    if mapData[i-1][j][tile]!=-1:neighborCount+=1
-    if mapData[i+1][j][tile]!=-1:neighborCount+=1
-    if mapData[i][j-1][tile]!=-1:neighborCount+=1
-    if mapData[i][j+1][tile]!=-1:neighborCount+=1  
-    if mapData[i][j][1]!=-1:neighborCount+=1
-    if mapData[i][j][0]!=-1:neighborCount+=1
+    try:
+        if mapData[i-1][j][tile]!=-1:neighborCount+=1
+    except IndexError:None
+    try:
+        if mapData[i+1][j][tile]!=-1:neighborCount+=1
+    except IndexError:None
+    try:
+        if mapData[i][j-1][tile]!=-1:neighborCount+=1
+    except IndexError:None
+    try:
+        if mapData[i][j+1][tile]!=-1:neighborCount+=1
+    except IndexError:None
+    try:
+        if mapData[i][j][1]!=-1:neighborCount+=1
+    except IndexError:None
+    try:
+        if mapData[i][j][0]!=-1:neighborCount+=1
+    except IndexError:None
     return neighborCount
 def updateMessages():
     global messages
@@ -2525,7 +2634,7 @@ def drawExitButton():
         colour=(230,230,0)
         if pygame.mouse.get_pressed()[0]:
             clientPlayer.inventoryOpen=False
-            clientPrompt=Prompt("Exit",exitMessages[random.randint(0,len(exitMessages)-1)],button1Name="Yep")
+            clientPrompt=Prompt("Exit",exitMessages[random.randint(0,len(exitMessages)-1)],button1Name="Yep",size=(6,2))
             waitToUse=True
     else:
         colour=(255,255,255)
@@ -2533,6 +2642,7 @@ def drawExitButton():
     text=outlineText("Quit",colour,DEFAULTFONT)
     screen.blit(text,(left,top))
 def colourSurface(greySurf,col):
+    if col==():col=(0,0,0)
     x=greySurf.get_width()
     y=greySurf.get_height()
     surf=pygame.Surface((x,y))   
@@ -2543,6 +2653,413 @@ def colourSurface(greySurf,col):
     colour.fill(col)#create a blank surf with the colour of the hair
     surf.blit(colour,(0,0),None,BLEND_RGB_ADD)#blit the new surf to the hair with an add blend flag
     return surf
+
+def loadMenuPlayerData():
+    global playerLoads
+    path = "Players"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    possibleLoads=os.listdir(path)#get filenames
+    playerLoads=[]
+    for i in range(len(possibleLoads)):
+        dat=pickle.load(open("Players/"+possibleLoads[i],"rb"))
+        possibleLoads[i]=possibleLoads[i][:-7]
+        playerDataSurf=pygame.Surface((315,60))
+        playerDataSurf.fill((50,50,50))
+        pygame.draw.rect(playerDataSurf,(60,60,60),Rect(0,0,315,60),4)
+        playerDataSurf.blit(outlineText(dat[0],(255,255,255),DEFAULTFONT),(5,3))#name
+        playerDataSurf.blit(outlineText("Created: ",(255,255,255),DEFAULTFONT),(5,20))#creation date
+        playerDataSurf.blit(outlineText("Playtime: ",(255,255,255),DEFAULTFONT),(5,40))#playtime
+        playerDataSurf.blit(outlineText(dat[7],(230,230,0),DEFAULTFONT),(80,20))#creation date
+        playerDataSurf.blit(outlineText(str(dat[5])+" HP",(230,10,10),DEFAULTFONT,outlineColour=(128,5,5)),(120,3))#hp
+        playerDataSurf.blit(outlineText(str(int((dat[6]/60)//60))+":"+str(int(dat[6]//60%60)).zfill(2)+":"+str(int(dat[6]%60)).zfill(2),(230,230,0),DEFAULTFONT),(90,40))#playtime
+        sprites=Player.renderSprites(dat[1],directions=1,armFrameCount=1,torsoFrameCount=1)
+        playerDataSurf.blit(sprites[0][0],(270,0))
+        playerDataSurf.blit(sprites[1][0],(270,0))
+        playerLoads.append([dat,playerDataSurf])
+
+def loadMenuWorldData():
+    global worldLoads
+    path = "Saves"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    possibleLoads=os.listdir(path)#get filenames
+    worldLoads=[]
+    for i in range(len(possibleLoads)):
+        if possibleLoads[i][-3:]=="dat":#if it's a dat file
+            dat=pickle.load(open("Saves/"+possibleLoads[i],"rb"))
+
+            worldDataSurf=pygame.Surface((315,60))
+            worldDataSurf.fill((50,50,50))
+            pygame.draw.rect(worldDataSurf,(60,60,60),Rect(0,0,315,60),4)
+            
+            worldDataSurf.blit(outlineText(dat.name,(255,255,255),DEFAULTFONT),(5,3))#name
+            worldDataSurf.blit(outlineText("Created: ",(255,255,255),DEFAULTFONT),(5,20))#creation date
+            worldDataSurf.blit(outlineText("Playtime: ",(255,255,255),DEFAULTFONT),(5,40))#playtime
+            worldDataSurf.blit(outlineText(dat.creationDate,(230,230,0),DEFAULTFONT),(80,20))#creation date
+            worldDataSurf.blit(outlineText(str(int((dat.playTime/60)//60))+":"+str(int(dat.playTime//60%60)).zfill(2)+":"+str(int(dat.playTime%60)).zfill(2),(230,230,0),DEFAULTFONT),(90,40))#playtime
+
+            worldDataSurf.blit(miscGuiImages[10],(260,7))
+            
+            worldLoads.append([dat.name,worldDataSurf])
+
+def loadAllMenuData():
+    """load all the required variables for the main menu"""
+    titleText=outlineText("Fegaria Remastered",(110,147,43),XLARGEFONT,outlineColour=(50,80,7))
+    playText=outlineText("Play",(255,255,255),LARGEFONT)
+    settingsText=outlineText("Settings",(255,255,255),LARGEFONT)
+    websiteText=outlineText("Changes",(255,255,255),LARGEFONT)
+    creditsText=outlineText("Credits",(255,255,255),LARGEFONT)
+    quitText=outlineText("Quit",(255,255,255),LARGEFONT)
+
+    altPlayText=outlineText("Play",(230,230,15),LARGEFONT)
+    altSettingsText=outlineText("Settings",(230,230,15),LARGEFONT)
+    altWebsiteText=outlineText("Changes",(230,230,15),LARGEFONT)
+    altCreditsText=outlineText("Credits",(230,230,15),LARGEFONT)
+    altQuitText=outlineText("Quit",(230,230,15),LARGEFONT)
+
+    menuLeft1=screenW/2-titleText.get_width()/2
+    menuLeft2=screenW/2-playText.get_width()/2
+    menuLeft3=screenW/2-settingsText.get_width()/2
+    menuLeft4=screenW/2-websiteText.get_width()/2
+    menuLeft5=screenW/2-creditsText.get_width()/2
+    menuLeft6=screenW/2-quitText.get_width()/2
+
+    menuWidth1=playText.get_width()
+    menuWidth2=settingsText.get_width()
+    menuWidth3=websiteText.get_width()
+    menuWidth4=creditsText.get_width()
+    menuWidth5=quitText.get_width()
+
+    playHover=False
+    settingsHover=False
+    websiteHover=False
+    creditsHover=False
+    quitHover=False
+    backHover=False
+    newItemHover=False
+
+    screenshotImg=pygame.image.load("Screenshots/screenshot"+str(random.randint(1,14))+".png")
+    scale=280/screenshotImg.get_height()
+    screenshotImg=pygame.transform.scale(screenshotImg,(int(scale*screenshotImg.get_width()),280))
+    boarderImg=createPromptSurf(screenshotImg.get_width()//48+2,7,"")
+    loadMenuSurf=createPromptSurf(7,8,"")
+
+    creditText1=outlineText("Credits",(255,255,255),LARGEFONT)
+    creditText2=outlineText("Design: Fergus Griggs",(255,255,255),LARGEFONT)
+    creditText3=outlineText("Programming: Fergus Griggs",(255,255,255),LARGEFONT)
+    creditText4=outlineText("Anything but audio: Fergus Griggs",(255,255,255),LARGEFONT)
+    creditText5=outlineText("Music and sounds: Re-Logic",(255,255,255),LARGEFONT)
+
+    backText=outlineText("Back",(255,255,255),LARGEFONT)
+    altBackText=outlineText("Back",(230,230,15),LARGEFONT)
+    backLeft=screenW/2-backText.get_width()/2
+    backWidth=backText.get_width()
+
+    creditLeft1=screenW/2-creditText1.get_width()/2
+    creditLeft2=screenW/2-creditText2.get_width()/2
+    creditLeft3=screenW/2-creditText3.get_width()/2
+    creditLeft4=screenW/2-creditText4.get_width()/2
+    creditLeft5=screenW/2-creditText5.get_width()/2
+
+    clientColourPicker=ColourPicker((int(screenW/2-155),190),300,300)
+
+    loadMenuBoxLeft1=screenW/2-336/2
+    loadMenuBoxLeft2=screenW/2-315/2
+
+    newPlayerText=outlineText("New Player",(255,255,255),LARGEFONT)
+    newWorldText=outlineText("New World",(255,255,255),LARGEFONT)
+    newPlayerAltText=outlineText("New Player",(230,230,10),LARGEFONT)
+    newWorldAltText=outlineText("New World",(230,230,10),LARGEFONT)
+
+    newPlayerLeft=screenW/2-newPlayerText.get_width()/2
+    newPlayerWidth=newPlayerText.get_width()
+
+    newWorldLeft=screenW/2-newWorldText.get_width()/2
+    newWorldWidth=newWorldText.get_width()
+
+    selectPlayerText=outlineText("Select player",(255,255,255),LARGEFONT)
+    selectPlayerLeft=screenW/2-selectPlayerText.get_width()/2
+
+    selectWorldText=outlineText("Select world",(255,255,255),LARGEFONT)
+    selectWorldLeft=screenW/2-selectWorldText.get_width()/2
+
+    hairTypeText=outlineText("Hair type",(255,255,255),LARGEFONT)
+    altHairTypeText=outlineText("Hair type",(230,230,10),LARGEFONT)
+    hairTypeTextLeft=screenW/2-hairTypeText.get_width()/2
+    hairTypeTextWidth=hairTypeText.get_width()
+    hairTypeHover=False
+
+    hairColourText=outlineText("Hair colour",(255,255,255),LARGEFONT)
+    altHairColourText=outlineText("Hair colour",(230,230,10),LARGEFONT)
+    hairColourTextLeft=screenW/2-hairColourText.get_width()/2
+    hairColourTextWidth=hairColourText.get_width()
+    hairColourHover=False
+
+    eyesText=outlineText("Eye colour",(255,255,255),LARGEFONT)
+    altEyesText=outlineText("Eye colour",(230,230,10),LARGEFONT)
+    eyesTextLeft=screenW/2-eyesText.get_width()/2
+    eyesTextWidth=eyesText.get_width()
+    eyesHover=False
+
+    skinText=outlineText("Skin colour",(255,255,255),LARGEFONT)
+    altSkinText=outlineText("Skin colour",(230,230,10),LARGEFONT)
+    skinTextLeft=screenW/2-skinText.get_width()/2
+    skinTextWidth=skinText.get_width()
+    skinHover=False
+
+    clothesText=outlineText("Clothes",(255,255,255),LARGEFONT)
+    altClothesText=outlineText("Clothes",(230,230,10),LARGEFONT)
+    clothesTextLeft=screenW/2-clothesText.get_width()/2
+    clothesTextWidth=clothesText.get_width()
+    clothesHover=False
+
+    shirtText=outlineText("Shirt colour",(255,255,255),LARGEFONT)
+    altShirtText=outlineText("Shirt colour",(230,230,10),LARGEFONT)
+    shirtLeft=screenW/2-shirtText.get_width()/2
+    shirtWidth=shirtText.get_width()
+    shirtHover=False
+
+    undershirtText=outlineText("Undershirt colour",(255,255,255),LARGEFONT)
+    altUndershirtText=outlineText("Undershirt colour",(230,230,10),LARGEFONT)
+    undershirtLeft=screenW/2-undershirtText.get_width()/2
+    undershirtWidth=undershirtText.get_width()
+    undershirtHover=False
+
+    trouserText=outlineText("Trouser colour",(255,255,255),LARGEFONT)
+    altTrouserText=outlineText("Trouser colour",(230,230,10),LARGEFONT)
+    trouserLeft=screenW/2-trouserText.get_width()/2
+    trouserWidth=trouserText.get_width()
+    trouserHover=False
+
+    shoeText=outlineText("Shoe colour",(255,255,255),LARGEFONT)
+    altShoeText=outlineText("Shoe colour",(230,230,10),LARGEFONT)
+    shoeLeft=screenW/2-shoeText.get_width()/2
+    shoeWidth=shoeText.get_width()
+    shoeHover=False
+
+    createText=outlineText("Create",(255,255,255),LARGEFONT)
+    altCreateText=outlineText("Create",(230,230,10),LARGEFONT)
+    createTextLeft=screenW/2-createText.get_width()/2
+    createTextWidth=createText.get_width()
+    createHover=False
+
+    playerNameText=outlineText("Player name:",(255,255,255),LARGEFONT)
+    playerNameTextLeft=screenW/2-playerNameText.get_width()/2
+
+    randomizeText=outlineText("Randomize",(255,255,255),LARGEFONT)
+    altRandomizeText=outlineText("Randomize",(230,230,10),LARGEFONT)
+    randomizeTextLeft=screenW/2-randomizeText.get_width()/2
+    randomizeTextWidth=randomizeText.get_width()
+    randomizeHover=False
+
+    saveSelectSurf=pygame.Surface((315,360))
+    saveSelectSurf.set_colorkey((255,0,255)) 
+    saveSelectYOffset=0
+    saveSelectYVel=0
+
+    worldNameText=outlineText("World name:",(255,255,255),LARGEFONT)
+    worldSizeText1=outlineText("World Size:",(255,255,255),LARGEFONT)
+    worldSizeText2=outlineText("Tiny (100x350)",(255,255,255),LARGEFONT)
+    worldSizeText3=outlineText("Small (200x550)",(255,255,255),LARGEFONT)
+    worldSizeText4=outlineText("Medium (400x700)",(255,255,255),LARGEFONT)
+
+    altWorldSizeText2=outlineText("Tiny (100x350)",(230,230,10),LARGEFONT)
+    altWorldSizeText3=outlineText("Small (200x550)",(230,230,10),LARGEFONT)
+    altWorldSizeText4=outlineText("Medium (400x700)",(230,230,10),LARGEFONT)
+    
+    worldSize1Hover=False
+    worldSize2Hover=False
+    worldSize3Hover=False
+    
+    worldNameTextLeft=screenW/2-worldNameText.get_width()/2
+    worldSizeText1Left=screenW/2-worldSizeText1.get_width()/2
+    worldSizeText2Left=screenW/2-worldSizeText2.get_width()/2
+    worldSizeText3Left=screenW/2-worldSizeText3.get_width()/2
+    worldSizeText4Left=screenW/2-worldSizeText4.get_width()/2
+
+    worldSizeText1Width=worldSizeText1.get_width()
+    worldSizeText2Width=worldSizeText2.get_width()
+    worldSizeText3Width=worldSizeText3.get_width()
+
+    comingSoonText=outlineText("Coming soon...",(255,255,255),LARGEFONT)
+    comingSoonTextLeft=screenW/2-comingSoonText.get_width()/2
+    
+    
+    
+    globals().update(locals())
+def unLoadAllMenuData():
+    """Unload the copious amounts of variables hogging memory"""
+    titleText=None
+    playText=None
+    settingsText=None
+    creditsText=None
+    quitText=None
+
+    altPlayText=None
+    altSettingsText=None
+    altCreditsText=None
+    altQuitText=None
+
+    menuLeft1=None
+    menuLeft2=None
+    menuLeft3=None
+    menuLeft4=None
+    menuLeft5=None
+
+    menuWidth1=None
+    menuWidth2=None
+    menuWidth3=None
+    menuWidth4=None
+
+    playHover=None
+    settingsHover=None
+    creditsHover=None
+    quitHover=None
+    backHover=None
+    newItemHover=None
+
+    screenshotImg=None
+    screenshotImg=None
+    boarderImg=None
+    loadMenuSurf=None
+
+    creditText1=None
+    creditText2=None
+    creditText3=None
+    creditText4=None
+    creditText5=None
+
+    backText=None
+    altBackText=None
+    backLeft=None
+    backWidth=None
+
+    creditLeft1=None
+    creditLeft2=None
+    creditLeft3=None
+    creditLeft4=None
+    creditLeft5=None
+
+    clientColourPicker=None
+
+    loadMenuBoxLeft1=None
+    loadMenuBoxLeft2=None
+
+    newPlayerText=None
+    newWorldText=None
+    newPlayerAltText=None
+    newWorldAltText=None
+
+    newPlayerLeft=None
+    newPlayerWidth=None
+
+    newWorldLeft=None
+    newWorldWidth=None
+
+    selectPlayerText=None
+    selectPlayerLeft=None
+
+    selectWorldText=None
+    selectWorldLeft=None
+
+    hairColourText=None
+    altHairColourText=None
+    hairColourTextLeft=None
+    hairColourTextWidth=None
+    hairColourHover=None
+
+    hairTypeText=None
+    altHairTypeText=None
+    hairTypeTextLeft=None
+    hairTypeTextWidth=None
+    hairTypeHover=None
+
+    eyesText=None
+    altEyesText=None
+    eyesTextLeft=None
+    eyesTextWidth=None
+    eyesHover=None
+
+    skinText=None
+    altSkinText=None
+    skinTextLeft=None
+    skinTextWidth=None
+    skinHover=None
+
+    clothesText=None
+    altClothesText=None
+    clothesTextLeft=None
+    clothesTextWidth=None
+    clothesHover=None
+
+    createText=None
+    altCreateText=None
+    createTextLeft=None
+    createTextWidth=None
+    createHover=None
+
+    playerNameText=None
+    playerNameTextLeft=None
+    
+    randomizeText=None
+    altRandomizeText=None
+    randomizeTextLeft=None
+    randomizeTextWidth=None
+    randomizeHover=None
+
+    worldNameText=None
+    worldSizeText1=None
+    worldSizeText2=None
+    worldSizeText3=None
+    worldSizeText4=None
+
+    altWorldSizeText2=None
+    altWorldSizeText3=None
+    altWorldSizeText4=None
+    
+    worldSize1Hover=None
+    worldSize2Hover=None
+    worldSize3Hover=None
+    
+    worldNameTextLeft=None
+    worldSizeText1Left=None
+    worldSizeText2Left=None
+    worldSizeText3Left=None
+    worldSizeText4Left=None
+
+    worldSizeText1Width=None
+    worldSizeText2Width=None
+    worldSizeText3Width=None
+
+    playerModel=None
+    playerModelData=None
+    playerLoads=None
+    worldLoads=None
+
+    comingSoonText=None
+    comingSoonTextLeft=None
+    
+    globals().update(locals())
+    
+def updatePlayerModelColours():
+    global playerModel
+    playerModel.skinCol=playerModelData[2][0]
+    playerModel.hairCol=playerModelData[3][0]
+    playerModel.eyeCol=playerModelData[4][0]
+    playerModel.shirtCol=playerModelData[5][0]
+    playerModel.underShirtCol=playerModelData[6][0]
+    playerModel.trouserCol=playerModelData[7][0]
+    playerModel.shoeCol=playerModelData[8][0]
+
+def blitGenerationStage(string):
+    screen.blit(backsurfs[1],(0,0))
+    screen.blit(titleText,(menuLeft1,10))
+    text1=outlineText("Generating "+worldName+"...",(255,255,255),LARGEFONT)
+    text2=outlineText(string,(255,255,255),LARGEFONT)
+    screen.blit(text1,(screenW/2-text1.get_width()/2,300))
+    screen.blit(text2,(screenW/2-text2.get_width()/2,350))
+    pygame.display.flip()
     
 noise=perlin.SimplexNoise()#create noise object
 OFFSETS=[random.random()*1000,random.random()*1000,random.random()*1000]#randomly generate offsets
@@ -2754,35 +3271,22 @@ enemySpawnTick=0
 loadConfig()#(1920,1080),(1280, 720), (1152, 864), (1024, 768), (800, 600)
         
 BLOCKSIZE=16
-BIOMEBOARDER_X1=MAPSIZEX/3
-BIOMEBOARDER_X2=MAPSIZEX*2/3
-
-WORLDBOARDER_WEST=int(BLOCKSIZE)
-WORLDBOARDER_EAST=int(MAPSIZEX*BLOCKSIZE-BLOCKSIZE)
-WORLDBOARDER_NORTH=int(BLOCKSIZE*1.5)
-WORLDBOARDER_SOUTH=int(MAPSIZEY*BLOCKSIZE-BLOCKSIZE*1.5)
 
 xMinBlocks=int((screenW//BLOCKSIZE)/2)# used for calculations when spawning enemies
 xMaxBlocks=int(xMinBlocks*2)
 yMinBlocks=int((screenH//BLOCKSIZE)/2)
 yMaxBlocks=int(yMinBlocks*2)
 
-defaultModel=Model(0,
-                   random.randint(0,8),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,255),random.randint(1,255),random.randint(0,255)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)))
+defaultModel=Model(0,0,(127,72,36),
+                   (62,22,0),
+                   (0,0,0),
+                   (95,125,127),
+                   (48,76,127),
+                   (129,113,45),
+                   (80, 100, 45))
 
 playerWidth=26
 playerHeight=48
-
-loadPlayerData()
-
-loadSaves()
 
 if RUNFULLSCREEN:screen=pygame.display.set_mode((screenW,screenH),FULLSCREEN)
 else:screen=pygame.display.set_mode((screenW,screenH))
@@ -2850,31 +3354,18 @@ loadItemTiles()
 loadMiscGui()
 
 fontFilePath="Fonts/VCR_OSD_MONO_1.001.ttf"
-
+XLARGEFONT=pygame.font.Font(fontFilePath,50)
 LARGEFONT=pygame.font.Font(fontFilePath,30)
 DEFAULTFONT=pygame.font.Font(fontFilePath,16)
 SMALLFONT=pygame.font.Font(fontFilePath,10)
 
-createPlayer()
 
 clock=pygame.time.Clock()
 
+clientPlayer=None
+
 if SPLASHSCREEN:
     runSplashScreen()
-    
-screen.fill((0,0,0))
-text0=outlineText("Greetings "+clientPlayer.name+", bear with us while",(255,255,255),LARGEFONT)
-text1=outlineText("we load up '"+clientWorld.name+"'...",(255,255,255),LARGEFONT)
-text2=outlineText(helpfulTips[random.randint(0,len(helpfulTips)-1)],(255,255,255),DEFAULTFONT)
-screen.blit(text0,(screenW/2-text0.get_width()/2,screenH/2-30))
-screen.blit(text1,(screenW/2-text1.get_width()/2,screenH/2))
-screen.blit(text2,(screenW/2-text2.get_width()/2,screenH*4/5))
-pygame.display.flip()
-
-createSurface()
-
-
-clientPlayer.pos=tuple(clientWorld.spawnPoint)
 
 fadeBack=False
 shift=False
@@ -2884,7 +3375,6 @@ backgroundTick=0
 backgroundScrollVel=0
 autoSaveTick=0
 autoSaveDelay=3600#every minute
-gameAge=0
 fps=0
 fpsTick=0
 lastHoveredItem=None
@@ -2896,107 +3386,761 @@ canPickupItem=False
 waitToUse=False
 quitButtonHover=False
 
-clientPlayer.renderCurrentItemImage()
-clientPlayer.renderHotbar()
-clientPlayer.renderInventory()
-fpsText=outlineText(str(clientPlayer.pos[0]//BLOCKSIZE)+" "+str(clientPlayer.pos[1]//BLOCKSIZE)+" "+str(int(fps)),(255,255,255),DEFAULTFONT)
-renderHandText()
-
 clientPrompt=None
 
-frame=2
+gameState="MAINMENU"
+gameSubState="MAIN"
+
+######################################################MESSY CODE BEYOND THIS POINT#############################################################
+    
+loadAllMenuData()
+
 while 1:
-    fps=clock.get_fps()
-    try:
-        clientWorld.playTime+=1/fps
-        clientPlayer.playTime+=1/fps
-        gameAge+=1/fps
-    except:None#fps is zero
-    
     m=pygame.mouse.get_pos()
-    
-    updateEnemies()
-    updateProjectiles()
-    updateParticles()
-    updateMessages()
-    updatePhysicsItems()
-    checkEnemySpawn()
-    clientPlayer.update()
-    clientPlayer.animate()
-    updateDamageNumbers()
-    if clientPrompt!=None:
+    if gameState=="PLAYING":
+        fps=clock.get_fps()
+        try:
+            clientWorld.playTime+=1/fps
+            clientPlayer.playTime+=1/fps
+        except:None#fps is zero
+        
+        updateEnemies()
+        updateProjectiles()
+        updateParticles()
+        updateMessages()
+        updatePhysicsItems()
+        checkEnemySpawn()
+        clientPlayer.update()
+        clientPlayer.animate()
+        updateDamageNumbers()
+        if clientPrompt!=None:
+            clientPrompt.update()
+            if clientPrompt.close==True:
+                clientPrompt=None
+                waitToUse=True
+        
+        if BACKGROUND:
+            if fadeBack:
+                if fadeFloat<1:
+                    fadeSurf=backsurfs[fadeBackgroundID].copy()
+                    fadeSurf.set_alpha(fadeFloat*255)
+                    fadeFloat+=0.1
+                else:
+                    fadeBack=False
+                    backgroundID=int(fadeBackgroundID)
+            screen.blit(backsurfs[backgroundID],parallaxPos)
+            if fadeBack:
+                screen.blit(fadeSurf,parallaxPos)
+        else:
+            screen.fill((135,206,250))
+            
+        screen.blit(mainSurf,(screenW/2-clientPlayer.pos[0],screenH/2-clientPlayer.pos[1]))
+        drawProjectiles()
+        clientPlayer.draw()
+        drawParticles()
+        drawEnemies()
+        drawPhysicsItems()
+        drawDamageNumbers()
+        drawMessages()
+        checkEnemyHover()
+
+        if clientPrompt!=None:
+            clientPrompt.draw()
+        if not clientPlayer.alive:
+            drawDeathMessage()
+        screen.blit(fpsText,(screenW-fpsText.get_width(),0))
+
+        screen.blit(clientPlayer.hotbarImage,(5,20))
+        if clientPlayer.inventoryOpen:
+            screen.blit(clientPlayer.inventoryImage,(5,70))
+        pygame.draw.rect(screen,(230,230,10),Rect(5+clientPlayer.hotbarIndex*48,20,48,48),3)
+        if clientPlayer.inventoryOpen:
+            drawInventoryHoverText()
+            drawExitButton()
+        screen.blit(handText,(242-handText.get_width()/2,0))
+        drawHoldingItem()
+        
+        if BACKGROUND:
+            changeBackground()
+            moveParallax((backgroundScrollVel,0))
+            
+        if autoSaveTick<=0:
+            autoSaveTick=autoSaveDelay
+            Save()
+        else:autoSaveTick-=1
+
+        if fpsTick<=0:
+            fpsTick=100
+            fpsText=outlineText(str((clientPlayer.pos[0]+m[0]-screenW/2)//BLOCKSIZE)+" "+str((clientPlayer.pos[1]+m[1]-screenH/2)//BLOCKSIZE)+" "+str(int(fps)),(255,255,255),DEFAULTFONT)
+        else:fpsTick-=1
+                
+    elif gameState=="MAINMENU":
+        parallaxPos=(parallaxPos[0]-0.5,0)
+        if parallaxPos[0]<-40:parallaxPos=(0,0)
+        screen.blit(backsurfs[1],parallaxPos)
+        if gameSubState=="MAIN":
+            screen.blit(boarderImg,(screenW/2-boarderImg.get_width()/2,80))
+            screen.blit(screenshotImg,(screenW/2-screenshotImg.get_width()/2,105))
+            ######BUTTON CHECKS
+            if Rect(menuLeft2,430,menuWidth1,30).collidepoint(m):
+                if not playHover:
+                    if SFX:sounds[26].play()
+                    playHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    loadMenuPlayerData()
+                    if SFX:sounds[24].play()
+                    gameSubState="PLAYERSELECTION"
+            else:playHover=False
+            
+            if Rect(menuLeft3,460,menuWidth2,30).collidepoint(m):
+                if not settingsHover:
+                    if SFX:sounds[26].play()
+                    settingsHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="SETTINGS"
+            else:settingsHover=False
+
+            if Rect(menuLeft4,490,menuWidth3,30).collidepoint(m):
+                if not websiteHover:
+                    if SFX:sounds[26].play()
+                    websiteHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    clientPrompt=Prompt("browser opened","Webpage opened in a new tab",size=(5,2))
+                    webbrowser.open("https://www.pygame.org/project/3451/5563")
+            else:websiteHover=False
+            
+            if Rect(menuLeft5,520,menuWidth4,30).collidepoint(m):
+                if not creditsHover:
+                    if SFX:sounds[26].play()
+                    creditsHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="CREDITS"
+            else:creditsHover=False
+            
+            if Rect(menuLeft6,550,menuWidth5,30).collidepoint(m):
+                if not quitHover:
+                    if SFX:sounds[26].play()
+                    quitHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    if not waitToUse:
+                        Exit()
+            else:quitHover=False
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            
+            if playHover:screen.blit(altPlayText,(menuLeft2,430))
+            else:screen.blit(playText,(menuLeft2,430))
+            if settingsHover:screen.blit(altSettingsText,(menuLeft3,460))
+            else:screen.blit(settingsText,(menuLeft3,460))
+            if websiteHover:screen.blit(altWebsiteText,(menuLeft4,490))
+            else:screen.blit(websiteText,(menuLeft4,490))
+            if creditsHover:screen.blit(altCreditsText,(menuLeft5,520))
+            else:screen.blit(creditsText,(menuLeft5,520))
+            if quitHover:screen.blit(altQuitText,(menuLeft6,550))
+            else:screen.blit(quitText,(menuLeft6,550))
+            
+        elif gameSubState=="CREDITS":
+            ######BUTTON CHECKS
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="MAIN"
+            else:backHover=False
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(creditText1,(creditLeft1,150))
+            screen.blit(creditText2,(creditLeft2,220))
+            screen.blit(creditText3,(creditLeft3,260))
+            screen.blit(creditText4,(creditLeft4,300))
+            screen.blit(creditText5,(creditLeft5,340))
+            
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+            
+        elif gameSubState=="SETTINGS":
+            ######BUTTON CHECKS
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="MAIN"
+            else:backHover=False
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(comingSoonText,(comingSoonTextLeft,300))
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+            
+        elif gameSubState=="PLAYERSELECTION":
+            ######BUTTON CHECKS
+            if pygame.mouse.get_pressed()[0] and not waitToUse:
+                if Rect(loadMenuBoxLeft1,120,336,384).collidepoint(m):
+                    for i in range(len(playerLoads)):
+                        if Rect(loadMenuBoxLeft2,132+i*62+saveSelectYOffset,315,60).collidepoint(m):
+                            waitToUse=True
+                            playerData=playerLoads[i][0]
+                            loadMenuWorldData()
+                            if SFX:sounds[24].play()
+                            gameSubState="WORLDSELECTION"
+                            saveSelectYOffset=0
+                            
+            if Rect(newPlayerLeft,510,newPlayerWidth,30).collidepoint(m):
+                if not newItemHover:
+                    if SFX:sounds[26].play()
+                    newItemHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="PLAYERCREATION"
+                    playerModelData=[0,0,[(127,72,36),None,None],[(62,22,0),None,None],[(0,0,0),None,None],[(95,125,127),None,None],[(48,76,127),None,None],[(129,113,45),None,None],[(80, 100, 45),None,None]]
+                    playerModel=Model(playerModelData[0],playerModelData[1],playerModelData[2][0],playerModelData[3][0],playerModelData[4][0],playerModelData[5][0],playerModelData[6][0],playerModelData[7][0],playerModelData[8][0])
+                    playerModelSprites=Player.renderSprites(playerModel,directions=1,armFrameCount=1,torsoFrameCount=1)
+            else:newItemHover=False
+                
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="MAIN"
+            else:backHover=False
+            
+            saveSelectYVel*=0.9
+            if len(playerLoads)>5:
+                saveSelectYOffset+=saveSelectYVel
+                if saveSelectYOffset<-61*len(playerLoads)+350:
+                    saveSelectYOffset=-61*len(playerLoads)+350
+                if saveSelectYOffset>0:
+                    saveSelectYOffset=0
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(selectPlayerText,(selectPlayerLeft,75))
+            screen.blit(loadMenuSurf,(loadMenuBoxLeft1,120))
+            saveSelectSurf.fill((255,0,255))
+            for i in range(len(playerLoads)): 
+                saveSelectSurf.blit(playerLoads[i][1],(0,i*62+saveSelectYOffset))
+            screen.blit(saveSelectSurf,(loadMenuBoxLeft2,132))
+            if newItemHover:screen.blit(newPlayerAltText,(newPlayerLeft,510))
+            else:screen.blit(newPlayerText,(newPlayerLeft,510))
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+
+        elif gameSubState=="PLAYERCREATION":
+            ######BUTTON CHECKS
+
+            if Rect(hairTypeTextLeft,190,hairTypeTextWidth,30).collidepoint(m):
+                if not hairTypeHover:
+                    if SFX:sounds[26].play()
+                    hairTypeHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[26].play()
+                    if playerModel.hairID<8:
+                        playerModel.hairID+=1
+                    else:playerModel.hairID=0
+                    playerModelSprites=Player.renderSprites(playerModel,directions=1,armFrameCount=1,torsoFrameCount=1)
+            else:hairTypeHover=False
+            
+            if Rect(hairColourTextLeft,230,hairColourTextWidth,30).collidepoint(m):
+                if not hairColourHover:
+                    if SFX:sounds[26].play()
+                    hairColourHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="COLOURPICKER"
+                    dataIndex=3
+                    lastMenu="PLAYERCREATION"
+                    if playerModelData[dataIndex][1]!=None:
+                        clientColourPicker.selectedColour=tuple(playerModelData[dataIndex][0])
+                    clientColourPicker.selectedX=playerModelData[dataIndex][1]
+                    clientColourPicker.selectedY=playerModelData[dataIndex][2]
+            else:hairColourHover=False
+            
+            if Rect(eyesTextLeft,270,eyesTextWidth,30).collidepoint(m):
+                if not eyesHover:
+                    if SFX:sounds[26].play()
+                    eyesHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="COLOURPICKER"
+                    dataIndex=4
+                    lastMenu="PLAYERCREATION"
+                    if playerModelData[dataIndex][1]!=None:
+                        clientColourPicker.selectedColour=tuple(playerModelData[dataIndex][0])
+                    clientColourPicker.selectedX=playerModelData[dataIndex][1]
+                    clientColourPicker.selectedY=playerModelData[dataIndex][2]
+            else:eyesHover=False
+            
+            if Rect(skinTextLeft,310,skinTextWidth,30).collidepoint(m):
+                if not skinHover:
+                    if SFX:sounds[26].play()
+                    skinHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="COLOURPICKER"
+                    dataIndex=2
+                    lastMenu="PLAYERCREATION"
+                    if playerModelData[dataIndex][1]!=None:
+                        clientColourPicker.selectedColour=tuple(playerModelData[dataIndex][0])
+                    clientColourPicker.selectedX=playerModelData[dataIndex][1]
+                    clientColourPicker.selectedY=playerModelData[dataIndex][2]
+            else:skinHover=False
+            
+            if Rect(clothesTextLeft,350,clothesTextWidth,30).collidepoint(m):
+                if not clothesHover:
+                    if SFX:sounds[26].play()
+                    clothesHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="CLOTHES"
+            else:clothesHover=False
+            
+            if Rect(createTextLeft,450,createTextWidth,30).collidepoint(m):
+                if not createHover:
+                    if SFX:sounds[26].play()
+                    createHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="PLAYERNAMING"
+                    nameString=""
+            else:createHover=False
+            
+            if Rect(randomizeTextLeft,490,randomizeTextWidth,30).collidepoint(m):
+                if not randomizeHover:
+                    if SFX:sounds[26].play()
+                    randomizeHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[26].play()
+                    playerModelData=[0,random.randint(0,8),
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None],
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None],
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None],
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None],
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None],
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None],
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None],
+                                     [(random.randint(0,128),random.randint(0,128),random.randint(0,128)),None,None]]
+                    playerModel.sex=playerModelData[0]
+                    playerModel.hairID=playerModelData[1]
+                    updatePlayerModelColours()
+                    playerModelSprites=Player.renderSprites(playerModel,directions=1,armFrameCount=1,torsoFrameCount=1)
+            else:randomizeHover=False
+
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="PLAYERSELECTION"
+                    saveSelectYOffset=0
+            else:backHover=False  
+            
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(playerModelSprites[0][0],(screenW/2-playerModelSprites[0][0].get_width()/2,80))
+            screen.blit(playerModelSprites[1][0],(screenW/2-playerModelSprites[1][0].get_width()/2,80))
+            if hairTypeHover:screen.blit(altHairTypeText,(hairTypeTextLeft,190))
+            else:screen.blit(hairTypeText,(hairTypeTextLeft,190))
+            if hairColourHover:screen.blit(altHairColourText,(hairColourTextLeft,230))
+            else:screen.blit(hairColourText,(hairColourTextLeft,230))
+            if eyesHover:screen.blit(altEyesText,(eyesTextLeft,270))
+            else:screen.blit(eyesText,(eyesTextLeft,270))
+            if skinHover:screen.blit(altSkinText,(skinTextLeft,310))
+            else:screen.blit(skinText,(skinTextLeft,310))
+            if clothesHover:screen.blit(altClothesText,(clothesTextLeft,350))
+            else:screen.blit(clothesText,(clothesTextLeft,350))
+            if createHover:screen.blit(altCreateText,(createTextLeft,450))
+            else:screen.blit(createText,(createTextLeft,450))
+            if randomizeHover:screen.blit(altRandomizeText,(randomizeTextLeft,490))
+            else:screen.blit(randomizeText,(randomizeTextLeft,490))
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+        elif gameSubState=="WORLDSELECTION":
+            ######BUTTON CHECKS
+            Break=False
+            if pygame.mouse.get_pressed()[0] and not waitToUse:
+                if Rect(loadMenuBoxLeft1,120,336,384).collidepoint(m):
+                    for i in range(len(worldLoads)):
+                        if Rect(loadMenuBoxLeft2,132+i*60+saveSelectYOffset,315,60).collidepoint(m):
+                            if SFX:sounds[24].play()
+                            mapData=pickle.load(open("Saves/"+worldLoads[i][0]+".wrld","rb"))#open selected save wrld file
+                            clientWorld=pickle.load(open("Saves/"+worldLoads[i][0]+".dat","rb"))#open selected save dat file
+                            MAPSIZEX,MAPSIZEY=len(mapData),len(mapData[0])
+                            BIOMEBOARDER_X1=MAPSIZEX/3
+                            BIOMEBOARDER_X2=MAPSIZEX*2/3
+                            WORLDBOARDER_WEST=int(BLOCKSIZE)
+                            WORLDBOARDER_EAST=int(MAPSIZEX*BLOCKSIZE-BLOCKSIZE)
+                            WORLDBOARDER_NORTH=int(BLOCKSIZE*1.5)
+                            WORLDBOARDER_SOUTH=int(MAPSIZEY*BLOCKSIZE-BLOCKSIZE*1.5)
+                            tileMaskData=[[-1 for i in range(MAPSIZEY)] for i in range(MAPSIZEX)]
+                            wallTileMaskData=[[-1 for i in range(MAPSIZEY)] for i in range(MAPSIZEX)]
+                            backgroundID=3
+                            worldName=clientWorld.name
+                            createPlayer()
+                            screen.fill((0,0,0))
+                            text0=outlineText("Greetings "+clientPlayer.name+", bear with us while",(255,255,255),LARGEFONT)
+                            text1=outlineText("we load up '"+clientWorld.name+"'...",(255,255,255),LARGEFONT)
+                            text2=outlineText(helpfulTips[random.randint(0,len(helpfulTips)-1)],(255,255,255),DEFAULTFONT)
+                            screen.blit(text0,(screenW/2-text0.get_width()/2,screenH/2-30))
+                            screen.blit(text1,(screenW/2-text1.get_width()/2,screenH/2))
+                            screen.blit(text2,(screenW/2-text2.get_width()/2,screenH*4/5))
+                            pygame.display.flip()
+                            createSurface()
+                            clientPlayer.pos=tuple(clientWorld.spawnPoint)
+                            clientPlayer.renderCurrentItemImage()
+                            clientPlayer.renderHotbar()
+                            clientPlayer.renderInventory()
+                            fpsText=outlineText(str(clientPlayer.pos[0]//BLOCKSIZE)+" "+str(clientPlayer.pos[1]//BLOCKSIZE)+" "+str(int(fps)),(255,255,255),DEFAULTFONT)
+                            renderHandText()
+                            gameState="PLAYING"
+                            Break=True
+                            break
+            if not Break:
+                if Rect(newWorldLeft,520,newWorldWidth,30).collidepoint(m):
+                    if not newItemHover:
+                        if SFX:sounds[26].play()
+                        newItemHover=True
+                    if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                        waitToUse=True
+                        if SFX:sounds[24].play()
+                        gameSubState="WORLDCREATION"
+                else:newItemHover=False
+                    
+                if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                    if not backHover:
+                        if SFX:sounds[26].play()
+                        backHover=True
+                    if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                        waitToUse=True
+                        if SFX:sounds[25].play()
+                        gameSubState="PLAYERSELECTION"
+                        saveSelectYOffset=0
+                else:backHover=False
+
+                saveSelectYVel*=0.9
+                if len(worldLoads)>5:
+                    saveSelectYOffset+=saveSelectYVel
+                    if saveSelectYOffset<-61*len(worldLoads)+350:
+                        saveSelectYOffset=-61*len(worldLoads)+350
+                    if saveSelectYOffset>0:
+                        saveSelectYOffset=0
+                        
+                ######BLITS
+                screen.blit(titleText,(menuLeft1,10))
+                screen.blit(selectWorldText,(selectWorldLeft,75))
+                screen.blit(loadMenuSurf,(loadMenuBoxLeft1,120))
+
+                saveSelectSurf.fill((255,0,255))
+                for i in range(len(worldLoads)): 
+                    saveSelectSurf.blit(worldLoads[i][1],(0,i*62+saveSelectYOffset))
+                screen.blit(saveSelectSurf,(loadMenuBoxLeft2,132))
+                
+                if newItemHover:screen.blit(newWorldAltText,(newWorldLeft,510))
+                else:screen.blit(newWorldText,(newWorldLeft,510))
+                if backHover:screen.blit(altBackText,(backLeft,550))
+                else:screen.blit(backText,(backLeft,550))
+            
+        elif gameSubState=="WORLDCREATION":
+            ######BUTTON CHECKS
+            if Rect(worldSizeText2Left,250,worldSizeText1Width,30).collidepoint(m):
+                if not worldSize1Hover:
+                    if SFX:sounds[26].play()
+                    worldSize1Hover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    worldSize=0
+                    nameString=""
+                    gameSubState="WORLDNAMING"
+            else:worldSize1Hover=False
+
+            if Rect(worldSizeText3Left,290,worldSizeText2Width,30).collidepoint(m):
+                if not worldSize2Hover:
+                    if SFX:sounds[26].play()
+                    worldSize2Hover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    worldSize=1
+                    nameString=""
+                    gameSubState="WORLDNAMING"
+            else:worldSize2Hover=False
+
+            if Rect(worldSizeText4Left,330,worldSizeText3Width,30).collidepoint(m):
+                if not worldSize3Hover:
+                    if SFX:sounds[26].play()
+                    worldSize3Hover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    worldSize=2
+                    nameString=""
+                    gameSubState="WORLDNAMING"
+            else:worldSize3Hover=False
+            
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="WORLDSELECTION"
+            else:backHover=False
+            
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(worldSizeText1,(worldSizeText1Left,140))
+            if worldSize1Hover:screen.blit(altWorldSizeText2,(worldSizeText2Left,250))
+            else:screen.blit(worldSizeText2,(worldSizeText2Left,250))
+            if worldSize2Hover:screen.blit(altWorldSizeText3,(worldSizeText3Left,290))
+            else:screen.blit(worldSizeText3,(worldSizeText3Left,290))
+            if worldSize3Hover:screen.blit(altWorldSizeText4,(worldSizeText4Left,330))
+            else:screen.blit(worldSizeText4,(worldSizeText4Left,330))
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+        elif gameSubState=="CLOTHES":
+            ######BUTTON CHECKS
+            if Rect(shirtLeft,200,shirtWidth,30).collidepoint(m):
+                if not shirtHover:
+                    if SFX:sounds[26].play()
+                    shirtHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="COLOURPICKER"
+                    dataIndex=5
+                    lastMenu="CLOTHES"
+                    if playerModelData[dataIndex][1]!=None:
+                        clientColourPicker.selectedColour=tuple(playerModelData[dataIndex][0])
+                    clientColourPicker.selectedX=playerModelData[dataIndex][1]
+                    clientColourPicker.selectedY=playerModelData[dataIndex][2]
+            else:shirtHover=False
+
+            if Rect(undershirtLeft,240,undershirtWidth,30).collidepoint(m):
+                if not undershirtHover:
+                    if SFX:sounds[26].play()
+                    undershirtHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="COLOURPICKER"
+                    dataIndex=6
+                    lastMenu="CLOTHES"
+                    if playerModelData[dataIndex][1]!=None:
+                        clientColourPicker.selectedColour=tuple(playerModelData[dataIndex][0])
+                    clientColourPicker.selectedX=playerModelData[dataIndex][1]
+                    clientColourPicker.selectedY=playerModelData[dataIndex][2]
+            else:undershirtHover=False
+
+            if Rect(trouserLeft,280,trouserWidth,30).collidepoint(m):
+                if not trouserHover:
+                    if SFX:sounds[26].play()
+                    trouserHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="COLOURPICKER"
+                    dataIndex=7
+                    lastMenu="CLOTHES"
+                    if playerModelData[dataIndex][1]!=None:
+                        clientColourPicker.selectedColour=tuple(playerModelData[dataIndex][0])
+                    clientColourPicker.selectedX=playerModelData[dataIndex][1]
+                    clientColourPicker.selectedY=playerModelData[dataIndex][2]
+            else:trouserHover=False
+
+            if Rect(shoeLeft,320,shoeWidth,30).collidepoint(m):
+                if not shoeHover:
+                    if SFX:sounds[26].play()
+                    shoeHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[24].play()
+                    gameSubState="COLOURPICKER"
+                    dataIndex=8
+                    lastMenu="CLOTHES"
+                    if playerModelData[dataIndex][1]!=None:
+                        clientColourPicker.selectedColour=tuple(playerModelData[dataIndex][0])
+                    clientColourPicker.selectedX=playerModelData[dataIndex][1]
+                    clientColourPicker.selectedY=playerModelData[dataIndex][2]
+            else:shoeHover=False
+            
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="PLAYERCREATION"
+            else:backHover=False
+            
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(playerModelSprites[0][0],(screenW/2-playerModelSprites[0][0].get_width()/2,80))
+            screen.blit(playerModelSprites[1][0],(screenW/2-playerModelSprites[1][0].get_width()/2,80))
+            if shirtHover:screen.blit(altShirtText,(shirtLeft,200))
+            else:screen.blit(shirtText,(shirtLeft,200))
+            if undershirtHover:screen.blit(altUndershirtText,(undershirtLeft,240))
+            else:screen.blit(undershirtText,(undershirtLeft,240))
+            if trouserHover:screen.blit(altTrouserText,(trouserLeft,280))
+            else:screen.blit(trouserText,(trouserLeft,280))
+            if shoeHover:screen.blit(altShoeText,(shoeLeft,320))
+            else:screen.blit(shoeText,(shoeLeft,320))
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+        elif gameSubState=="WORLDNAMING":
+            if Rect(createTextLeft,510,createTextWidth,30).collidepoint(m):
+                if not createHover:
+                    if SFX:sounds[26].play()
+                    createHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if worldSize==0:MAPSIZEX=100;MAPSIZEY=350
+                    elif worldSize==1:MAPSIZEX=200;MAPSIZEY=550
+                    elif worldSize==2:MAPSIZEX=400;MAPSIZEY=700
+                    generateTerrain("DEFAULT",nameString,MAPSIZEX,MAPSIZEY,blitProgress=True)
+                    pickle.dump(mapData,open("Saves/"+str(worldName)+".wrld","wb"))#save wrld
+                    pickle.dump(clientWorld,open("Saves/"+str(worldName)+".dat","wb"))#save dat
+                    loadMenuWorldData()
+                    if SFX:sounds[25].play()
+                    gameSubState="WORLDSELECTION"
+            else:createHover=False
+            
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="WORLDCREATION"
+            else:backHover=False
+
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(worldNameText,(worldNameTextLeft,140))
+            text=outlineText(nameString+"|",(255,255,255),LARGEFONT)
+            screen.blit(text,(screenW/2-text.get_width()/2,175))
+            if createHover:screen.blit(altCreateText,(createTextLeft,510))
+            else:screen.blit(createText,(createTextLeft,510))
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+        elif gameSubState=="PLAYERNAMING":
+            
+            if Rect(createTextLeft,510,createTextWidth,30).collidepoint(m):
+                if not createHover:
+                    if SFX:sounds[26].play()
+                    createHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    date=datetime.datetime.now()
+                    creationDate=str(str(date)[:19])
+                    
+                    playerData=[nameString,playerModel,None,None,100,100,0,creationDate]#create player array
+                    pickle.dump(playerData,open("Players/"+nameString+".player","wb"))#save player array
+                    loadMenuPlayerData()
+                    if SFX:sounds[25].play()
+                    gameSubState="PLAYERSELECTION"
+            else:createHover=False
+            
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    if SFX:sounds[25].play()
+                    gameSubState="PLAYERCREATION"
+            else:backHover=False
+
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(playerNameText,(playerNameTextLeft,140))
+            text=outlineText(nameString+"|",(255,255,255),LARGEFONT)
+            screen.blit(text,(screenW/2-text.get_width()/2,175))
+            screen.blit(playerModelSprites[0][0],(screenW/2-playerModelSprites[0][0].get_width()/2,80))
+            screen.blit(playerModelSprites[1][0],(screenW/2-playerModelSprites[1][0].get_width()/2,80))
+            if createHover:screen.blit(altCreateText,(createTextLeft,510))
+            else:screen.blit(createText,(createTextLeft,510))
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+            
+        elif gameSubState=="COLOURPICKER":
+            ######BUTTON CHECKS
+            if Rect(backLeft,550,backWidth,30).collidepoint(m):
+                if not backHover:
+                    if SFX:sounds[26].play()
+                    backHover=True
+                if pygame.mouse.get_pressed()[0] and waitToUse==False:
+                    waitToUse=True
+                    gameSubState=lastMenu
+                    if SFX:sounds[25].play()
+            else:backHover=False
+                
+            clientColourPicker.update()
+            if clientColourPicker.selectedX!=None and clientColourPicker.selectedY!=None:
+                playerModelData[dataIndex][1]=clientColourPicker.selectedX
+                playerModelData[dataIndex][2]=clientColourPicker.selectedY
+                playerModelData[dataIndex][0]=tuple(clientColourPicker.selectedColour)
+                updatePlayerModelColours()
+                playerModelSprites=Player.renderSprites(playerModel,directions=1,armFrameCount=1,torsoFrameCount=1)
+            
+            
+            ######BLITS
+            screen.blit(titleText,(menuLeft1,10))
+            screen.blit(playerModelSprites[0][0],(screenW/2-playerModelSprites[0][0].get_width()/2,80))
+            screen.blit(playerModelSprites[1][0],(screenW/2-playerModelSprites[1][0].get_width()/2,80))
+            clientColourPicker.draw()
+            
+            if backHover:screen.blit(altBackText,(backLeft,550))
+            else:screen.blit(backText,(backLeft,550))
+        if gameState=="PLAYING":
+            unLoadAllMenuData()
+            
+    if clientPrompt!=None:#draw the prompt if there is one
         clientPrompt.update()
+        clientPrompt.draw()
         if clientPrompt.close==True:
             clientPrompt=None
-            waitToUse=True
-    
-    if BACKGROUND:
-        if fadeBack:
-            if fadeFloat<1:
-                fadeSurf=backsurfs[fadeBackgroundID].copy()
-                fadeSurf.set_alpha(fadeFloat*255)
-                fadeFloat+=0.1
-            else:
-                fadeBack=False
-                backgroundID=int(fadeBackgroundID)
-        screen.blit(backsurfs[backgroundID],parallaxPos)
-        if fadeBack:
-            screen.blit(fadeSurf,parallaxPos)
-    else:
-        screen.fill((135,206,250))
-        
-    screen.blit(mainSurf,(screenW/2-clientPlayer.pos[0],screenH/2-clientPlayer.pos[1]))
-    drawParticles()
-    drawProjectiles()
-    clientPlayer.draw()
-    drawEnemies()
-    drawPhysicsItems()
-    drawDamageNumbers()
-    drawMessages()
-    checkEnemyHover()
-
-    if clientPrompt!=None:
-        clientPrompt.draw()
-    if not clientPlayer.alive:
-        drawDeathMessage()
-    screen.blit(fpsText,(screenW-fpsText.get_width(),0))
-
-    screen.blit(clientPlayer.hotbarImage,(5,20))
-    if clientPlayer.inventoryOpen:
-        screen.blit(clientPlayer.inventoryImage,(5,70))
-    pygame.draw.rect(screen,(230,230,10),Rect(5+clientPlayer.hotbarIndex*48,20,48,48),3)
-    if clientPlayer.inventoryOpen:
-        drawInventoryHoverText()
-        drawExitButton()
-    screen.blit(handText,(242-handText.get_width()/2,0))
-    drawHoldingItem()
-    
-    if BACKGROUND:
-        changeBackground()
-        moveParallax((backgroundScrollVel,0))
-        
-    if autoSaveTick<=0:
-        autoSaveTick=autoSaveDelay
-        Save()
-    else:autoSaveTick-=1
-
-    if fpsTick<=0:
-        fpsTick=100
-        fpsText=outlineText(str((clientPlayer.pos[0]+m[0]-screenW/2)//BLOCKSIZE)+" "+str((clientPlayer.pos[1]+m[1]-screenH/2)//BLOCKSIZE)+" "+str(int(fps)),(255,255,255),DEFAULTFONT)
-    else:fpsTick-=1
-
-    if not pygame.mouse.get_pressed()[0]:
+            
+    if not pygame.mouse.get_pressed()[0]:#reset some variables when the mousebutton is lifted
         if waitToUse:
             waitToUse=False
         if holdingItemBool:
             canDropHolding=True
         elif not holdingItemBool:
             canPickupItem=True
-        
+            
     for event in pygame.event.get():
         if event.type==QUIT:
-            clientPlayer.inventoryOpen=False
-            clientPrompt=Prompt("Exit",exitMessages[random.randint(0,len(exitMessages)-1)],button1Name="Yep")
+            if gameState=="PLAYING":
+                clientPlayer.inventoryOpen=False
+                clientPrompt=Prompt("Exit",exitMessages[random.randint(0,len(exitMessages)-1)],button1Name="Yep",size=(6,2))
+            else:
+                Exit()
             waitToUse=True
         if event.type==SONG_END:
             pygame.mixer.music.load("Sound/day.mp3")
@@ -3005,148 +4149,238 @@ while 1:
         if event.type==KEYDOWN:
             if event.key==K_LSHIFT:
                 shift=True
-            if event.key==K_ESCAPE:
-                if clientPlayer.inventoryOpen:
-                    if SFX:
-                        sounds[25].play()
-                    clientPlayer.inventoryOpen=False
+            if event.key==K_CAPSLOCK:
+                if shift:
+                    shift=False
                 else:
-                    if SFX:
-                        sounds[24].play()
-                    clientPlayer.inventoryOpen=True
-                    clientPrompt=None
-            if event.key==K_a:
-                clientPlayer.movingLeft=True
-                clientPlayer.animationFrame=random.randint(17,29)
-                if not clientPlayer.armSwing:
-                    clientPlayer.armAnimationFrame=random.randint(26,39)
-                if clientPlayer.direction==1:
-                    clientPlayer.itemSwing=False
-                clientPlayer.direction=0
-            if event.key==K_d:
-                clientPlayer.movingRight=True
-                clientPlayer.animationFrame=random.randint(2,15)
-                if not clientPlayer.armSwing:
-                    clientPlayer.armAnimationFrame=random.randint(6,19)
-                if clientPlayer.direction==0:
-                    clientPlayer.itemSwing=False
-                clientPlayer.direction=1
-            if pygame.key.get_mods() & KMOD_LSHIFT:
-                if event.key==K_s:
-                    clientWorld.spawnPoint=tuple(clientPlayer.pos)
-                    print("Spawn point moved to "+str(clientWorld.spawnPoint))
-            if event.key==K_s:
-                clientPlayer.movingDown=True
-                clientPlayer.animationSpeed=4
-            if event.key==K_k:
-                while len(enemies)>0:
-                    enemies[0].kill()
-            if event.key==K_SPACE:
-                if clientPlayer.alive:
-                    if clientPlayer.grounded:
-                        if SFX:
-                            sounds[6].play()
-                        if PARTICLES:
-                            colour=getBlockAverageColour(clientPlayer.lastBlockOn)
-                            for i in range(int(random.randint(4,6)*PARTICLEDENSITY)):
-                                Particle((screenW/2,screenH/2+BLOCKSIZE*1.5),colour,size=10,life=100,angle=-math.pi/2,spread=math.pi/4,GRAV=0,magnitude=1+random.random()*3)
-                        clientPlayer.vel=(clientPlayer.vel[0],-8.5)
-                        clientPlayer.grounded=False
-            if event.key==K_r:
-                clientPlayer.model=Model(0,
-                   random.randint(0,8),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,255),random.randint(1,255),random.randint(0,255)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)),
-                   (random.randint(0,128),random.randint(0,128),random.randint(0,128)))
-                clientPlayer.renderSprites()
-                message("Player randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
-            if event.key==K_j:
-                if PARTICLES:
-                    for i in range(int(40*PARTICLEDENSITY)):
-                        Particle((screenW/2,screenH/2),(230,230,255),magnitude=1+random.random()*1,size=15,GRAV=0)
-                if SFX:
-                    sounds[12].play()
-                clientPlayer.respawn()
-            if event.key==K_g:
-                GRAVITY=-GRAVITY;message("Gravity Reversed!",(255,255,255))
-            if event.key==K_p:
-                if clientPlayer.hotbar[clientPlayer.hotbarIndex]!=None:
-                    clientPlayer.hotbar[clientPlayer.hotbarIndex]=Item(clientPlayer.hotbar[clientPlayer.hotbarIndex].ID)
-                    message("Item prefix randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
-                    clientPlayer.renderCurrentItemImage()
-                    renderHandText()
-            if event.key==K_o:
-                clientPrompt=Prompt("test","My name's the guide, I can help you around this awfully crafted world. It's basically just a rip off of terraria so this should be child's play")
-                
-            if event.key==K_1:clientPlayer.hotbarIndex=0;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_2:clientPlayer.hotbarIndex=1;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_3:clientPlayer.hotbarIndex=2;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_4:clientPlayer.hotbarIndex=3;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_5:clientPlayer.hotbarIndex=4;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_6:clientPlayer.hotbarIndex=5;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_7:clientPlayer.hotbarIndex=6;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_8:clientPlayer.hotbarIndex=7;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_9:clientPlayer.hotbarIndex=8;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if event.key==K_0:clientPlayer.hotbarIndex=9;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
-            if SFX:
-                if event.key==K_1 or event.key==K_2 or event.key==K_3 or event.key==K_4 or event.key==K_5 or event.key==K_6 or event.key==K_7 or event.key==K_8 or event.key==K_9 or event.key==K_0:
-                    sounds[26].play()
-            if event.key==K_UP and shift:
-                musicVolume+=0.05
-                if musicVolume>1:musicVolume=1
-                pygame.mixer.music.set_volume(musicVolume)
-                message("Music volume set to "+str(round(musicVolume,2)),(255,255,255))
-            if event.key==K_DOWN and shift:
-                musicVolume-=0.05
-                if musicVolume<0:musicVolume=0
-                pygame.mixer.music.set_volume(musicVolume)
-                message("Music volume set to "+str(round(musicVolume,2)),(255,255,255))
-            if event.key==K_LEFT and shift:
-                soundVolume-=0.05
-                for sound in sounds:
-                    sound.set_volume(soundVolume)
-                message("Sound volume set to "+str(round(soundVolume,2)),(255,255,255))
-            if event.key==K_RIGHT and shift:
-                soundVolume+=0.05
-                for sound in sounds:
-                    sound.set_volume(soundVolume)
-                message("Sound volume set to "+str(round(soundVolume,2)),(255,255,255))
+                    shift=True
         if event.type==KEYUP:
-            if event.key==K_a:
-                clientPlayer.movingLeft=False
-            if event.key==K_d:
-                clientPlayer.movingRight=False
-            if event.key==K_s:
-                clientPlayer.movingDownTick=5
-                clientPlayer.stopMovingDown=True
-                clientPlayer.animationSpeed=1
             if event.key==K_LSHIFT:
                 shift=False
-                
-        if event.type==MOUSEBUTTONDOWN:
-            if event.button==4:
-                if clientPlayer.hotbarIndex>0:
-                    clientPlayer.hotbarIndex-=1
-                    clientPlayer.renderCurrentItemImage()
-                    clientPlayer.itemSwing=False
-                    renderHandText()
+        if gameState=="PLAYING":
+            if event.type==KEYDOWN:
+                if event.key==K_ESCAPE:
+                    if clientPlayer.inventoryOpen:
+                        if SFX:
+                            sounds[25].play()
+                        clientPlayer.inventoryOpen=False
+                    else:
+                        if SFX:
+                            sounds[24].play()
+                        clientPlayer.inventoryOpen=True
+                        clientPrompt=None
+                if event.key==K_a:
+                    clientPlayer.movingLeft=True
+                    clientPlayer.animationFrame=random.randint(17,29)
+                    if not clientPlayer.armSwing:
+                        clientPlayer.armAnimationFrame=random.randint(26,39)
+                    if clientPlayer.direction==1:
+                        clientPlayer.itemSwing=False
+                    clientPlayer.direction=0
+                if event.key==K_d:
+                    clientPlayer.movingRight=True
+                    clientPlayer.animationFrame=random.randint(2,15)
+                    if not clientPlayer.armSwing:
+                        clientPlayer.armAnimationFrame=random.randint(6,19)
+                    if clientPlayer.direction==0:
+                        clientPlayer.itemSwing=False
+                    clientPlayer.direction=1
+                if pygame.key.get_mods() & KMOD_LSHIFT:
+                    if event.key==K_s:
+                        clientWorld.spawnPoint=tuple(clientPlayer.pos)
+                        print("Spawn point moved to "+str(clientWorld.spawnPoint))
+                if event.key==K_s:
+                    clientPlayer.movingDown=True
+                    clientPlayer.animationSpeed=4
+                if event.key==K_k:
+                    while len(enemies)>0:
+                        enemies[0].kill()
+                if event.key==K_SPACE:
+                    if clientPlayer.alive:
+                        if clientPlayer.grounded:
+                            if SFX:
+                                sounds[6].play()
+                            if PARTICLES:
+                                colour=getBlockAverageColour(clientPlayer.lastBlockOn)
+                                for i in range(int(random.randint(4,6)*PARTICLEDENSITY)):
+                                    Particle((screenW/2,screenH/2+BLOCKSIZE*1.5),colour,size=10,life=100,angle=-math.pi/2,spread=math.pi/4,GRAV=0,magnitude=1+random.random()*3)
+                            clientPlayer.vel=(clientPlayer.vel[0],-8.5)
+                            clientPlayer.grounded=False
+                if event.key==K_j:
+                    if PARTICLES:
+                        for i in range(int(40*PARTICLEDENSITY)):
+                            Particle((screenW/2,screenH/2),(230,230,255),magnitude=1+random.random()*1,size=15,GRAV=0)
                     if SFX:
+                        sounds[12].play()
+                    clientPlayer.respawn()
+                if event.key==K_g:
+                    GRAVITY=-GRAVITY;message("Gravity Reversed!",(255,255,255))
+                if event.key==K_p:
+                    if clientPlayer.hotbar[clientPlayer.hotbarIndex]!=None:
+                        clientPlayer.hotbar[clientPlayer.hotbarIndex]=Item(clientPlayer.hotbar[clientPlayer.hotbarIndex].ID)
+                        message("Item prefix randomized!",(random.randint(0,255),random.randint(0,255),random.randint(0,255)),life=500)
+                        clientPlayer.renderCurrentItemImage()
+                        renderHandText()
+                if event.key==K_o:
+                    clientPrompt=Prompt("test","My name's the guide, I can help you around this awfully crafted world. It's basically just a rip off of terraria so this should be child's play")
+                    
+                if event.key==K_1:clientPlayer.hotbarIndex=0;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_2:clientPlayer.hotbarIndex=1;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_3:clientPlayer.hotbarIndex=2;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_4:clientPlayer.hotbarIndex=3;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_5:clientPlayer.hotbarIndex=4;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_6:clientPlayer.hotbarIndex=5;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_7:clientPlayer.hotbarIndex=6;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_8:clientPlayer.hotbarIndex=7;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_9:clientPlayer.hotbarIndex=8;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if event.key==K_0:clientPlayer.hotbarIndex=9;clientPlayer.renderCurrentItemImage();clientPlayer.itemSwing=False;renderHandText()
+                if SFX:
+                    if event.key==K_1 or event.key==K_2 or event.key==K_3 or event.key==K_4 or event.key==K_5 or event.key==K_6 or event.key==K_7 or event.key==K_8 or event.key==K_9 or event.key==K_0:
                         sounds[26].play()
-                else:
-                    clientPlayer.hotbarIndex=9
-            if event.button==5:
-                if clientPlayer.hotbarIndex<9:
-                    clientPlayer.hotbarIndex+=1
-                    clientPlayer.renderCurrentItemImage()
-                    clientPlayer.itemSwing=False
-                    renderHandText()
-                    if SFX:
-                        sounds[26].play()
-                else:
-                    clientPlayer.hotbarIndex=0
+                if event.key==K_UP and shift:
+                    musicVolume+=0.05
+                    if musicVolume>1:musicVolume=1
+                    pygame.mixer.music.set_volume(musicVolume)
+                    message("Music volume set to "+str(round(musicVolume,2)),(255,255,255))
+                if event.key==K_DOWN and shift:
+                    musicVolume-=0.05
+                    if musicVolume<0:musicVolume=0
+                    pygame.mixer.music.set_volume(musicVolume)
+                    message("Music volume set to "+str(round(musicVolume,2)),(255,255,255))
+                if event.key==K_LEFT and shift:
+                    soundVolume-=0.05
+                    for sound in sounds:
+                        sound.set_volume(soundVolume)
+                    message("Sound volume set to "+str(round(soundVolume,2)),(255,255,255))
+                if event.key==K_RIGHT and shift:
+                    soundVolume+=0.05
+                    for sound in sounds:
+                        sound.set_volume(soundVolume)
+                    message("Sound volume set to "+str(round(soundVolume,2)),(255,255,255))
+            if event.type==KEYUP:
+                if event.key==K_a:
+                    clientPlayer.movingLeft=False
+                if event.key==K_d:
+                    clientPlayer.movingRight=False
+                if event.key==K_s:
+                    clientPlayer.movingDownTick=5
+                    clientPlayer.stopMovingDown=True
+                    clientPlayer.animationSpeed=1
+                if event.key==K_LSHIFT:
+                    shift=False
+                    
+            if event.type==MOUSEBUTTONDOWN:
+                if event.button==4:
+                    if clientPlayer.hotbarIndex>0:
+                        clientPlayer.hotbarIndex-=1
+                        clientPlayer.renderCurrentItemImage()
+                        clientPlayer.itemSwing=False
+                        renderHandText()
+                        if SFX:
+                            sounds[26].play()
+                    else:
+                        clientPlayer.hotbarIndex=9
+                if event.button==5:
+                    if clientPlayer.hotbarIndex<9:
+                        clientPlayer.hotbarIndex+=1
+                        clientPlayer.renderCurrentItemImage()
+                        clientPlayer.itemSwing=False
+                        renderHandText()
+                        if SFX:
+                            sounds[26].play()
+                    else:
+                        clientPlayer.hotbarIndex=0
+        elif gameState=="MAINMENU":
+            if gameSubState=="PLAYERSELECTION" or gameSubState=="WORLDSELECTION":
+                if event.type==MOUSEBUTTONDOWN:
+                    if event.button==4:
+                        saveSelectYVel+=1
+                    if event.button==5:
+                        saveSelectYVel-=1
+            elif gameSubState=="PLAYERNAMING" or gameSubState=="WORLDNAMING":
+                if event.type==KEYDOWN:
+                    if event.key==K_a:
+                        if shift:nameString+="A"
+                        else:nameString+="a"
+                    elif event.key==K_b:
+                        if shift:nameString+="B"
+                        else:nameString+="b"
+                    elif event.key==K_c:
+                        if shift:nameString+="C"
+                        else:nameString+="c"
+                    elif event.key==K_d:
+                        if shift:nameString+="D"
+                        else:nameString+="d"
+                    elif event.key==K_e:
+                        if shift:nameString+="E"
+                        else:nameString+="e"
+                    elif event.key==K_f:
+                        if shift:nameString+="F"
+                        else:nameString+="f"
+                    elif event.key==K_g:
+                        if shift:nameString+="G"
+                        else:nameString+="g"
+                    elif event.key==K_h:
+                        if shift:nameString+="H"
+                        else:nameString+="h"
+                    elif event.key==K_i:
+                        if shift:nameString+="I"
+                        else:nameString+="i"
+                    elif event.key==K_j:
+                        if shift:nameString+="J"
+                        else:nameString+="j"
+                    elif event.key==K_k:
+                        if shift:nameString+="K"
+                        else:nameString+="k"
+                    elif event.key==K_l:
+                        if shift:nameString+="L"
+                        else:nameString+="l"
+                    elif event.key==K_m:
+                        if shift:nameString+="M"
+                        else:nameString+="m"
+                    elif event.key==K_n:
+                        if shift:nameString+="N"
+                        else:nameString+="n"
+                    elif event.key==K_o:
+                        if shift:nameString+="O"
+                        else:nameString+="o"
+                    elif event.key==K_p:
+                        if shift:nameString+="P"
+                        else:nameString+="p"
+                    elif event.key==K_q:
+                        if shift:nameString+="Q"
+                        else:nameString+="q"
+                    elif event.key==K_r:
+                        if shift:nameString+="R"
+                        else:nameString+="r"
+                    elif event.key==K_s:
+                        if shift:nameString+="S"
+                        else:nameString+="s"
+                    elif event.key==K_t:
+                        if shift:nameString+="T"
+                        else:nameString+="t"
+                    elif event.key==K_u:
+                        if shift:nameString+="U"
+                        else:nameString+="u"
+                    elif event.key==K_v:
+                        if shift:nameString+="V"
+                        else:nameString+="v"
+                    elif event.key==K_w:
+                        if shift:nameString+="W"
+                        else:nameString+="w"
+                    elif event.key==K_x:
+                        if shift:nameString+="X"
+                        else:nameString+="x"
+                    elif event.key==K_y:
+                        if shift:nameString+="Y"
+                        else:nameString+="y"
+                    elif event.key==K_z:
+                        if shift:nameString+="Z"
+                        else:nameString+="z"
+                    elif event.key==K_SPACE:nameString+=" "
+                    elif event.key==K_BACKSPACE:nameString=nameString[:-1]
+                    if len(nameString)>12:
+                        nameString=nameString[:-1]
+                    
     pygame.display.flip()
     clock.tick(80)
