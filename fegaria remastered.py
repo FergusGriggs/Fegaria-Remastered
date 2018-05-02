@@ -1,7 +1,7 @@
 #fegaria remastered
 __author__="Fergus Griggs"
 __email__="fbob987 at gmail dot com"
-__version__="0.0.6"
+__version__="0.0.7"
 
 import pygame, sys, math, time, os, random, perlin, pickle, datetime, webbrowser
 from pygame.locals import *
