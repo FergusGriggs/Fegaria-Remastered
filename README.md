@@ -25,3 +25,4 @@ file to play the game.
 - Music and sounds from Terraria, not my own.
 
 ![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/Screenshots/compilation1.png)
+![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/Screenshots/screenshot17.png)
