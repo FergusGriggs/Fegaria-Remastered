@@ -16,6 +16,7 @@ file to play the game.
 - random
 - pickle
 - datetime
+- webbrowser
 
 ## Notes:
 - You can turn off and on settings in the CONFIG.txt file
