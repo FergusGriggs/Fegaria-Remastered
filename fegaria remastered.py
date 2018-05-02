@@ -3511,7 +3511,7 @@ while 1:
                     waitToUse=True
                     if SFX:sounds[24].play()
                     clientPrompt=Prompt("browser opened","Webpage opened in a new tab",size=(5,2))
-                    webbrowser.open("https://www.pygame.org/project/3451/5563")
+                    webbrowser.open("https://www.pygame.org/project/3451")
             else:websiteHover=False
             
             if Rect(menuLeft5,520,menuWidth4,30).collidepoint(m):
