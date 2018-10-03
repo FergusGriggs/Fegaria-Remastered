@@ -1,3 +1,8 @@
+03/10/2018-v0.1.0-------------------------------------
+-added item wooden door
+-added item chest
+-added item crafting table
+-various improvements
 01-02/05/2018-v0.0.7----------------------------------
 -added a main menu
 -added gui for world creation, world selection, player creation, player selection etc
