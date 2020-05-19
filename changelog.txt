@@ -12,6 +12,7 @@
 - Removed console
 - Added large world size (Long load times)
 - Lots of settings can now be toggled in game (Look in controls.txt for info)
+- Smooth Camera Improved
 
 - Added block/item/light source: Lamp
 - Added common item prefix: Quick AF
