@@ -344,30 +344,13 @@ def RenderStatsText(pos):
 def UpdateLight(threadName, threadID):
     global lightSurf, mapLight, XMIN, XMAX, YMIN, YMAX, threadActive, newestLightSurf, newestLightSurfPos, threadUpdatingData, lastThreadTime;
     threadActive = True;
-    #if entity_manager.clientPlayer.velocity[0] < 0:
-    #    xval1 = int(entity_manager.clientPlayer.velocity[0]) * 2;
-    #    xval2 = 10;
-    #else:
-    #    xval1 = -10;
-    #    xval2 = int(entity_manager.clientPlayer.velocity[0]) * 2;
-    #if entity_manager.clientPlayer.velocity[1] < 0:
-    #    yval1 = int(entity_manager.clientPlayer.velocity[0]) * 2;
-    #    yval2 = 10;
-    #else:
-    #    yval1 = -10;
-    #    yval2 = int(entity_manager.clientPlayer.velocity[0]) * 2;
-    #
 
-    #targetPosition = (entity_manager.cameraPosition[0] + entity_manager.clientPlayer.velocity[0] * commons.BLOCKSIZE * 0.15, entity_manager.cameraPosition[1] + entity_manager.clientPlayer.velocity[1] * commons.BLOCKSIZE * 0.15);
-    
     targetPosition = (entity_manager.cameraPosition[0] + (entity_manager.cameraPositionDifference[0] / commons.DELTA_TIME) * lastThreadTime, entity_manager.cameraPosition[1] + (entity_manager.cameraPositionDifference[1] / commons.DELTA_TIME) * lastThreadTime);
 
-    #targetPosition = entity_manager.cameraPosition;
-
-    XMIN = int(targetPosition[0] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEX);# + xval1;
-    XMAX = int(targetPosition[0] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEX);# + xval2;
-    YMIN = int(targetPosition[1] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEY);# + yval1;
-    YMAX = int(targetPosition[1] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEY);# + yval2;
+    XMIN = int(targetPosition[0] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEX);
+    XMAX = int(targetPosition[0] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEX);
+    YMIN = int(targetPosition[1] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEY);
+    YMAX = int(targetPosition[1] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEY);
 
     XMINCHANGE = 0;
     YMINCHANGE = 0;
@@ -390,52 +373,55 @@ def UpdateLight(threadName, threadID):
     if YMAX > world.MAP_SIZE_Y:
         YMAX = world.MAP_SIZE_Y;
 
-    mapLight = [[0 for i in range(world.MAP_SIZE_Y)] for j in range(world.MAP_SIZE_X)];
+    #timeBefore = pygame.time.get_ticks();
+
     for i in range(XMIN, XMAX):
         for j in range(YMIN, YMAX):
-            tileID = world.mapData[i][j][0];
-            wallID = world.mapData[i][j][1];
-            if wallID == -1 and j < 100 or tileID == 13 or wallID == 13:
-                FillLight(i, j, globalLighting);
+            mapLight[i][j] = max(0, mapLight[i][j] - 4);
 
-    #XMIN -= xval1;
-    #XMAX -= xval2;
-    #YMIN -= yval1;
-    #YMAX -= yval2;
+    #mapLight = [[0 for i in range(world.MAP_SIZE_Y)] for j in range(world.MAP_SIZE_X)];
+    
+
+    for i in range(XMIN, XMAX):
+        for j in range(YMIN, YMAX):
+            if world.mapData[i][j][1] == -1 and j < 100:
+                FillLight(i, j, globalLighting);
+            elif world.mapData[i][j][0] == 13 or world.mapData[i][j][1] == 13:
+                FillLight(i, j, 10);
+    
+    #print("Fill Light MS: ", pygame.time.get_ticks() - timeBefore);
 
     rangeX = XMAX - XMIN;
     rangeY = YMAX - YMIN;
+
+    #timeBefore = pygame.time.get_ticks();
 
     lightSurf = pygame.Surface((rangeX, rangeY), pygame.SRCALPHA);
 
     for i in range(rangeX):
         for j in range(rangeY):
-            lightSurf.set_at((i, j), (0, 0, 0, 255 - mapLight[i + XMIN][j + YMIN] / 15 * 255));
+            lightSurf.set_at((i, j), (0, 0, 0, (15 - mapLight[i + XMIN][j + YMIN]) * 17));
 
     lightSurf = pygame.transform.scale(lightSurf, (rangeX * commons.BLOCKSIZE, rangeY * commons.BLOCKSIZE));
 
     threadUpdatingData = True;
     newestLightSurfPos = tempPos;
-    newestLightSurf = lightSurf.copy();
+    newestLightSurf = lightSurf;
     threadUpdatingData = False;
     threadActive = False;
 
-def FillLight(i, j, lightval):
+    #print("Scale Copy MS: ", pygame.time.get_ticks() - timeBefore);
+
+def FillLight(i, j, lightValue):
     global mapLight;
     if i >= XMIN and i < XMAX and j >= YMIN and j < YMAX:
-        val = world.mapData[i][j][0]
-        if val == -1:
-            newlightval = lightval - 1;
-        else:
-            newlightval = lightval - tables.tileData[val][1];
-        if newlightval < 0:
-            newlightval = 0;
-        if newlightval > mapLight[i][j]:
-            mapLight[i][j] = int(newlightval);
-            FillLight(i - 1, j, newlightval);
-            FillLight(i + 1, j, newlightval);
-            FillLight(i, j - 1, newlightval);
-            FillLight(i, j + 1, newlightval);
+        newlightValue = max(0, lightValue - tables.tileData[world.mapData[i][j][0]][1]);
+        if newlightValue > mapLight[i][j]:
+            mapLight[i][j] = int(newlightValue);
+            FillLight(i - 1, j, newlightValue);
+            FillLight(i + 1, j, newlightValue);
+            FillLight(i, j - 1, newlightValue);
+            FillLight(i, j + 1, newlightValue);
         else:
             return;
     else:
@@ -995,7 +981,15 @@ while gameRunning:
                             entity_manager.clientPlayer.RenderInventory();
 
                             RenderHandText();
+                            
                             mapLight = [[0 for i in range(world.MAP_SIZE_Y)]for j in range(world.MAP_SIZE_X)];
+                            for i in range(world.MAP_SIZE_X - 1):
+                                for j in range(world.MAP_SIZE_Y - 1):
+                                    if world.mapData[i][j][0] == -1 and world.mapData[i][j][1] == -1 and j < 100:
+                                        mapLight[i][j] = globalLighting;
+                                    else:
+                                        mapLight[i][j] = 0;
+                            
                             commons.GAME_STATE = "PLAYING";
                             Break = True;
                             break;

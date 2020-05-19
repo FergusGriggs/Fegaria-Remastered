@@ -51,7 +51,7 @@ itemData = [[          "Dirt",                              ["block"],          
             [  "Wooden Chest",          ["special", "chest", "block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                 "Fill it with loot!", [(255, 0, 0), (256, 1, 0), (265, 0, 1), (266, 1, 1)], [(0, 2), (1, 2)]], #27
             ["Crafting Table", ["special", "crafting table", "block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999], "In a time of destruction,  create.", [(267, 0, 0), (268, 1, 0)], [(0, 1), (1, 1)]], #28
             [   "Wooden Door",           ["special", "door", "block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                "Amazing technology.", [(261, 0, 0), (271, 0, 1), (281, 0, 2)], [(0, -1), (0, 3)]], #29
-            [          "Lamp",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                 None,   13], #30
+            [          "Lamp",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                      "Light it up!",   13], #30
            ];
 
 
@@ -94,6 +94,7 @@ tileData = [[0, 2],  [1, 2],  [2, 2],  [3, 2],  [4, 2],  [5, 2],  [6, 2],  [7, 2
                 [], [27, 1], [27, 1], [28, 1], [28, 1], [29, 1], [29, 1], [29, 1], # 264 -> 271
            [29, 1], [29, 1],      [],      [],      [],      [],      [], [29, 1], # 272 -> 279
            [29, 1], [29, 1], [29, 1], [29, 1],      [],      [],      [],      [], # 280 -> 287
+           [0, 1]# air
           ];
 
 
