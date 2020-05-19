@@ -37,7 +37,7 @@ class ColourPicker():
       pygame.draw.rect(self.surface, (128, 128, 128), Rect(2, 2, self.width+self.boarderSize * 2 - 4, self.height + self.boarderSize * 2 - 4), 0);
       pygame.draw.rect(self.surface, (110, 110, 110), Rect(4, 4, self.width+self.boarderSize * 2 - 8, self.height + self.boarderSize * 2 - 8), 0);
       
-      surf=pygame.Surface((int(self.width * self.surfaceResolution), int(self.height * self.surfaceResolution)));
+      surf = pygame.Surface((int(self.width * self.surfaceResolution), int(self.height * self.surfaceResolution)));
       for j in range(int(self.height * self.surfaceResolution)):
          for i in range(int(self.width * self.surfaceResolution)):
             surf.set_at((i, j), self.GetColour(i / self.surfaceResolution, j / self.surfaceResolution));
@@ -76,6 +76,7 @@ class ColourPicker():
             self.selectedColour = (self.selectedColour[0] * 0.5, self.selectedColour[1] * 0.5, self.selectedColour[2] * 0.5);
 
    def Draw(self):
-      commons.screen.blit(self.surface, self.position)
+      commons.screen.blit(self.surface, self.position);
+
       if self.selectedX != None and self.selectedY != None:
-          pygame.draw.circle(commons.screen, (128, 128, 128), (self.selectedX + self.position[0], self.selectedY + self.position[1]), 5, 1);
+          pygame.draw.circle(commons.screen, (128, 128, 128), (self.selectedX + self.position[0] + self.boarderSize, self.selectedY + self.position[1] + self.boarderSize), 5, 1);

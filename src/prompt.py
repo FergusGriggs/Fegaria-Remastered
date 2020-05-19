@@ -104,14 +104,17 @@ class Prompt():
                 self.close = True;
 
     def Draw(self):
+
         commons.screen.blit(self.bodySurf, (self.left, self.top));
         offsetx = 20;
+
         if self.shop:
             shopCol = (230, 230, 10);
             if self.shopHover:
                 shopCol = (255, 255, 255);
             commons.screen.blit(shared_methods.OutlineText("Shop", shopCol, commons.DEFAULTFONT), (self.left+offsetx, self.bot));
             offsetx += 60;
+
         if self.button1Name != None:
             button1Col = (230, 230, 10);
             if self.button1Hover:
@@ -119,6 +122,8 @@ class Prompt():
             commons.screen.blit(shared_methods.OutlineText(self.button1Name, button1Col, commons.DEFAULTFONT), (self.left + offsetx, self.bot));
             offsetx += commons.DEFAULTFONT.size(self.button1Name)[0] + 20;
         closeCol = (230, 230, 10);
+
         if self.closeHover:
             closeCol = (255, 255, 255);
+
         commons.screen.blit(shared_methods.OutlineText("Close", closeCol, commons.DEFAULTFONT), (self.left + offsetx, self.bot));
