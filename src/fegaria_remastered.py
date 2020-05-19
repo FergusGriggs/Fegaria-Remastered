@@ -689,8 +689,8 @@ newestLightSurf = pygame.Surface((0,0));
 newestLightSurfPos = (0,0);
 
 globalLighting = 16;
-LIGHTRENDERDISTANCEX = 38;
-LIGHTRENDERDISTANCEY = 34;
+LIGHTRENDERDISTANCEX = int((commons.WINDOW_WIDTH * 0.5) / commons.BLOCKSIZE) + 9;#38;
+LIGHTRENDERDISTANCEY = int((commons.WINDOW_HEIGHT * 0.5) / commons.BLOCKSIZE) + 9;#34;
 
 lastThreadTime = 0.2;
 lastThreadStart = pygame.time.get_ticks();
@@ -967,7 +967,7 @@ while gameRunning:
 
                             commons.screen.fill((0,0,0));
 
-                            text0 = shared_methods.OutlineText("Greetings " + entity_manager.clientPlayer.name + ",  bear with us while", (255, 255, 255), commons.LARGEFONT);
+                            text0 = shared_methods.OutlineText("Greetings " + entity_manager.clientPlayer.name + ", bear with us while", (255, 255, 255), commons.LARGEFONT);
                             text1 = shared_methods.OutlineText("we load up '" + world.clientWorld.name + "'", (255, 255, 255), commons.LARGEFONT);
                             text2 = shared_methods.OutlineText(tables.helpfulTips[random.randint(0, len(tables.helpfulTips) - 1)], (255, 255, 255), commons.DEFAULTFONT);
 
