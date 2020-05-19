@@ -1,97 +1,137 @@
+16-19/05/2020-v0.1.1-------------------------------------
+
+- Complete code structure overhaul
+- Code split up into various files
+- Semicolons now used cause they just look better
+- Code has been spaced out so that you can actually read it
+- Menu sysetm partially redesigned to be more efficient and modular
+- Experimental lighting vastly improved in quality and performance due to working multithreading (Still requires a beefy PC and a small resolution cause pygame is CPU shit, ideal resolution is 800x600)
+- More dynamic particles
+- Added title messages
+- Consistent gameplay across different hardware/fps with delta time
+- Removed console
+- Added large world size (Long load times)
+- Lots of settings can now be toggled in game (Look in controls.txt for info)
+
+- Added block/item/light source: Lamp
+- Added common item prefix: Quick AF
+
 03/10/2018-v0.1.0-------------------------------------
--
-added item wooden door
 
--added item chest
+- Added item: wooden door
+- Added item: chest
+- Added item: crafting table
+- Added (very) experimental lighting
+- Various improvements
 
--added item crafting table
-
--added (very) experimental lighting
--various improvements
 01-02/05/2018-v0.0.7----------------------------------
--added a main menu
--added gui for world creation, world selection, player creation, player selection etc
+
+- Added a main menu
+- Added UI for world creation, world selection, player creation, player selection etc
+
 29-30/04/2018-v0.0.6----------------------------------
--added prompts
--added health bar
--improved pickaxe functionality (can swing easier)
--improved/fixed enemy spawns (used to fly through world as they were spawned incorrectly)
--fixed spellings
+
+- Added prompts
+- Added health bar
+- Improved pickaxe functionality (can swing easier)
+- Improved/fixed enemy spawns (used to fly through world as they were spawned incorrectly)
+- Fixed spellings
+
 24-28/04/2018-v0.0.5----------------------------------
--compete ui rework
--added inventory
--added physics items
--added ranged weapon musket
--added skippable splashscreen and option to turn it off
--added item musket ball
--added item Copper Coin
--added item Silver Coin
--added item Gold Coin
--added item Platinum Coin
--added Tool/item Copper Pickaxe
--moved quit button into the bottom right (when in inventory)
--updated block functions, blocks have to be destroyed with a pickaxe now
--several new config options
+
+- Complete UI rework
+- Added skippable splashscreen and option to turn it off
+- Moved quit button into the bottom right (when in inventory)
+- Updated block functions, blocks have to be destroyed with a pickaxe now
+- Several new config options
+- Added inventory
+- Added physics items
+
+- Added ranged weapon: Musket
+
+- Added item: musket ball
+- Added item: Copper Coin
+- Added item: Silver Coin
+- Added item: Gold Coin
+- Added item: Platinum Coin
+
+- Added Tool/item: Copper Pickaxe
+
+
 22-23/04/2018-v0.0.4----------------------------------
--added projectiles
--added simple player creation saving
--added item/ranged weapon wooden bow
--added item/ammo/projectile wooden arrow
--improved text readability and quality
--added enemy hover text
--added item tier colours
--improved 'hotbar' and item descriptions
--added ranged prefix 'ADMIN'
--added 'FANCYTEXT' config option
+
+- Added projectiles
+- Improved 'hotbar' and item descriptions
+- Added simple player creation saving
+- Improved text readability and quality
+- Enemy hover text
+- Item tier colours
+
+- Added config option: FANCYTEXT
+
+- Added item/ranged weapon: Wooden Bow
+- Added item/ammo/projectile: Wooden Arrow
+
 13-14/04/2018-v0.0.3---------------------------------
--added sword wooden
--added sword copper
--added sword GOD SLAYER
--added item prefixes
--added enemy blue slime
--added enemy green slime
--added enemy red slime
--added enemy purple slime
--added enemy yellow slime
--added item descriptions
--added sword animations
--added damage numbers
--added death messages
+
+- Item prefixes
+- Item descriptions
+- Weapon animations
+- Damage numbers
+- Death messages
+
+- Added melee weapon: Wooden Sword
+- Added melee weapon: Copper Sword
+- Added melee weapon: GOD SLAYER
+
+- Added enemy: Blue Slime
+- Added enemy: Green Slime
+- Added enemy: Red Slime
+- Added enemy: Purple Slime
+- Added enemy: Yellow Slime
+
 09-12/04/2018-v0.0.2---------------------------------
--added tutorial world
--world saving improved (now saves spawn point and other details in a .dat file)
--added music volume controls
--added hp and hotbar text
--added more config options
--fixed clipping through platforms when falling quickly
+
+- World saving improved (now saves spawn point and other details in a .dat file)
+- Fixed clipping through platforms when falling quickly
+- Added world: Tutorial world
+- Music volume controls
+- HP and hotbar UI
+
+- Added various config options
+
 08/04/2018-v0.0.2---------------------------------
--added biome woodland
--added biome snow
--added biome desert
--added trees
--added block sand
--added block sandstone
--added block tree trunk
--added block leaves
--added block snow leaves
--added wall dirt
--added wall stone
--added wall wood
--added wall snow
--added wall sand
--added wall sandstone
--world saving improved (menu)
+
+- Added trees
+- World saving improved (menu)
+- Added walls
+
+- Added biome: Woodland
+- Added biome: Snow
+- Added biome: Desert
+
+- Added block: sand
+- Added block: sandstone
+- Added block: tree trunk
+- Added block: leaves
+- Added block: snow leaves
+
 02/04/2018-v0.0.1---------------------------------
--added simple world generation
--added block wood block
--added block grass
--added world saving
+
+- Simple world generation
+- World saving
+
+- Added block: Wood
+- Added block: Grass
+
 28-29/03/2018-v0.0.1------------------------------
--added block mask system
--added block merging
--added background parallax
--added player animation and hair randomization
--added block stone block
--added block dirt
--added block ice block
--added block snow block
+
+- Block mask system
+- Block merging
+- Background parallax
+- Player animation and hair randomization
+
+- Added block: Stone
+- Added block: Dirt
+- Added block: Ice
+- Added block: Snow
