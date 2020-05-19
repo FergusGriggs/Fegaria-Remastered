@@ -94,23 +94,23 @@ def FadeBackground(ID):
 def CheckChangeBackground(): 
     global backgroundTick;
     if backgroundTick <= 0:
-        backgroundTick += 1.0;
-        if entity_manager.clientPlayer.position[1] > 200 * commons.BLOCKSIZE:
-            if entity_manager.clientPlayer.position[0] < BIOMEBOARDER_X1 * commons.BLOCKSIZE:
+        backgroundTick += 0.25;
+        if entity_manager.cameraPosition[1] > 200 * commons.BLOCKSIZE:
+            if entity_manager.cameraPosition[0] < BIOMEBOARDER_X1 * commons.BLOCKSIZE:
                 if fadeBackgroundID != 0:
                     FadeBackground(0);
-            elif entity_manager.clientPlayer.position[0] < BIOMEBOARDER_X2 * commons.BLOCKSIZE:
+            elif entity_manager.cameraPosition[0] < BIOMEBOARDER_X2 * commons.BLOCKSIZE:
                 if fadeBackgroundID != 2:
                     FadeBackground(2);
             else:
                 if fadeBackgroundID != 2:
                     FadeBackground(2);
             backgroundScrollVel = 0;
-        if entity_manager.clientPlayer.position[1] > 110 * commons.BLOCKSIZE:
-            if entity_manager.clientPlayer.position[0] < BIOMEBOARDER_X1 * commons.BLOCKSIZE:
+        if entity_manager.cameraPosition[1] > 110 * commons.BLOCKSIZE:
+            if entity_manager.cameraPosition[0] < BIOMEBOARDER_X1 * commons.BLOCKSIZE:
                 if fadeBackgroundID != 0:
                     FadeBackground(0);
-            elif entity_manager.clientPlayer.position[0] < BIOMEBOARDER_X2 * commons.BLOCKSIZE:
+            elif entity_manager.cameraPosition[0] < BIOMEBOARDER_X2 * commons.BLOCKSIZE:
                 if fadeBackgroundID != 1:
                     FadeBackground(1);
             else:
@@ -118,7 +118,7 @@ def CheckChangeBackground():
                     FadeBackground(4);
             backgroundScrollVel = 0;
 
-        elif entity_manager.clientPlayer.position[1] > 15 * commons.BLOCKSIZE:
+        elif entity_manager.cameraPosition[1] > 15 * commons.BLOCKSIZE:
             if fadeBackgroundID != 3:
                 FadeBackground(3);
 
@@ -384,10 +384,13 @@ def UpdateLight(threadName, threadID):
 
     for i in range(XMIN, XMAX):
         for j in range(YMIN, YMAX):
-            if world.mapData[i][j][1] == -1 and j < 100:
-                FillLight(i, j, globalLighting);
+            if world.mapData[i][j][1] == -1 and world.mapData[i][j][0] == -1:
+                if j < 110:
+                    FillLight(i, j, globalLighting);
+                #else:
+                    #FillLight(i, j, 4);
             elif world.mapData[i][j][0] == 13 or world.mapData[i][j][1] == 13:
-                FillLight(i, j, 10);
+                FillLight(i, j, 14);
     
     #print("Fill Light MS: ", pygame.time.get_ticks() - timeBefore);
 
@@ -985,7 +988,7 @@ while gameRunning:
                             mapLight = [[0 for i in range(world.MAP_SIZE_Y)]for j in range(world.MAP_SIZE_X)];
                             for i in range(world.MAP_SIZE_X - 1):
                                 for j in range(world.MAP_SIZE_Y - 1):
-                                    if world.mapData[i][j][0] == -1 and world.mapData[i][j][1] == -1 and j < 100:
+                                    if world.mapData[i][j][0] == -1 and world.mapData[i][j][1] == -1 and j < 110:
                                         mapLight[i][j] = globalLighting;
                                     else:
                                         mapLight[i][j] = 0;

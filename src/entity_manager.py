@@ -245,10 +245,11 @@ def UpdateRecentPickups():
             if i != j:
                 #check if it is colliding with prevoius messages, if so, move up
                 if Rect(recentPickups[i][3][0], recentPickups[i][3][1], recentPickups[i][2].get_width(), recentPickups[i][2].get_height()).colliderect(Rect(recentPickups[j][3][0], recentPickups[j][3][1], recentPickups[j][2].get_width(), recentPickups[j][2].get_height())):
-                    recentPickups[i][4] = (recentPickups[i][4][0], recentPickups[i][4][1] - 0.05);
-                    recentPickups[i][3] = (recentPickups[i][3][0], recentPickups[i][3][1] - 1);
-        recentPickups[i][4] = (recentPickups[i][4][0] * 0.9, recentPickups[i][4][1] * 0.9);
-        recentPickups[i][3] = (recentPickups[i][3][0] + recentPickups[i][4][0], recentPickups[i][3][1] + recentPickups[i][4][1]);
+                    recentPickups[i][4] = (recentPickups[i][4][0], recentPickups[i][4][1] - 1 * commons.DELTA_TIME);
+                    recentPickups[i][3] = (recentPickups[i][3][0], recentPickups[i][3][1] - 50 * commons.DELTA_TIME);
+        dragFactor = 1.0 - commons.DELTA_TIME * 10;
+        recentPickups[i][4] = (recentPickups[i][4][0] * dragFactor, recentPickups[i][4][1] * dragFactor);
+        recentPickups[i][3] = (recentPickups[i][3][0] + recentPickups[i][4][0] * commons.DELTA_TIME * commons.BLOCKSIZE, recentPickups[i][3][1] + recentPickups[i][4][1] * commons.DELTA_TIME * commons.BLOCKSIZE);
     for item in toRemove:
         recentPickups.remove(item);
 
@@ -272,7 +273,7 @@ def AddRecentPickup(ID, amnt, tier, pos, unique = False, item = None):
     surf.set_colorkey((255, 0, 255));
     surf.fill((255, 0, 255));
     surf.blit(shared_methods.OutlineText(string, shared_methods.GetTierColour(tier), commons.DEFAULTFONT), (1, 1));
-    vel = (random.random() * 2 - 1, -6.5);
+    vel = (random.random() * 2 - 1, -50.0);
     recentPickups.append([ID, amnt, surf, pos, vel, 3.0]);
 
 def DrawRecentPickups():
