@@ -1,4 +1,4 @@
-16-19/05/2020-v0.1.1-------------------------------------
+16-20/05/2020-v0.1.1-------------------------------------
 
 - Complete code structure overhaul
 - Code split up into various files
@@ -13,8 +13,12 @@
 - Added large world size (Long load times)
 - Lots of settings can now be toggled in game (Look in controls.txt for info)
 - Smooth camera improved to ease out as well
+- Added grass growth
+- Added generated structure: Mine Shaft
 
 - Added block/item/light source: Lamp
+- Added block/item: Spike
+
 - Added common item prefix: Quick AF
 
 03/10/2018-v0.1.0-------------------------------------

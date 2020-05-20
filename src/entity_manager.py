@@ -70,8 +70,8 @@ def UpdatePhysicsItems():
     for physicsItem in physicsItems:
         physicsItem.Update();
 
-def SpawnPhysicsItem(position, ID, tier, amnt = 1, pickupDelay = 100, unique = False, item = None, velocity = None):
-    physicsItems.append(PhysicsItem(position, ID, tier, amnt, pickupDelay, unique, item, velocity));
+def SpawnPhysicsItem(item, position, velocity = None, pickupDelay = 100):
+    physicsItems.append(PhysicsItem(item, position, velocity, pickupDelay));
 
 def DrawPhysicsItems():
     for physicsItem in physicsItems:
@@ -91,15 +91,15 @@ def SpawnProjectile(position, angle, weaponDamage, weaponKnockback, weaponProjec
     
     damage = int(weaponDamage) + int(tables.projectileData[ID][2]);
     
-    power = int(weaponProjectileSpeed) + int(tables.projectileData[ID][3]);
+    power = int(weaponProjectileSpeed);
     velocity = (math.cos(angle) * power, math.sin(angle) * power);
     
     knockback = int(weaponKnockback) + int(tables.projectileData[ID][3]);
 
     if commons.SOUND:
-        sound_manager.sounds[int(tables.projectileData[ID][10])].play();
+        sound_manager.sounds[int(tables.projectileData[ID][9])].play();
     
-    projectiles.append(Projectile(position, velocity, str(tables.projectileData[ID][1]), ID, source, damage, knockback, crit, int(tables.projectileData[ID][5]), str(tables.projectileData[ID][7]), GRAVITY = float(tables.projectileData[ID][8]), DRAG = float(tables.projectileData[ID][9])));
+    projectiles.append(Projectile(position, velocity, str(tables.projectileData[ID][1]), ID, source, damage, knockback, crit, int(tables.projectileData[ID][4]), str(tables.projectileData[ID][6]), GRAVITY = float(tables.projectileData[ID][7]), DRAG = float(tables.projectileData[ID][8])));
 
 def UpdateMessages():
     global messages;
@@ -176,7 +176,7 @@ def SpawnEnemy(position = None, ID = None):
     else:
         enemies.append(Enemy(position, ID));
 
-def SpawnParticle(position, colour, life = 2, magnitude = 1, size = 5, angle = None, spread = math.pi / 4, GRAV = 1, velocity = None, outline = True):
+def SpawnParticle(position, colour, life = 2, magnitude = 1, size = 5, angle = None, spread = math.pi / 4, GRAV = 0.25, velocity = None, outline = True):
     particles.append(Particle(position, colour, life, magnitude, size, angle, spread, GRAV, velocity, outline));
 
 def UpdateDamageNumbers():
@@ -230,7 +230,7 @@ def AddDamageNumber(pos, val, crit = False, colour = None):
     
     surf.blit(t1, (midx, midy));
     
-    damageNumbers.append([(pos[0] - cameraPosition[0] + commons.WINDOW_WIDTH * 0.5, pos[1] - cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5), (random.random() * 4 - 2, -1 - random.random() * 4), surf, 3.0]);
+    damageNumbers.append([(pos[0] - cameraPosition[0] + commons.WINDOW_WIDTH * 0.5, pos[1] - cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5), (random.random() * 4 - 2, -1 - random.random() * 4), surf, 1.5]);
 
 def UpdateRecentPickups():
     global recentPickups;
@@ -281,7 +281,7 @@ def DrawRecentPickups():
         commons.screen.blit(recentPickup[2], (recentPickup[3][0] - recentPickup[2].get_width() * 0.5 - cameraPosition[0] + commons.WINDOW_WIDTH * 0.5, recentPickup[3][1] - cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5));
 
 def DrawEnemyHoverText():
-    mpos = (commons.MOUSE_POS[0] + clientPlayer.position[0] - commons.WINDOW_WIDTH * 0.5, commons.MOUSE_POS[1] + clientPlayer.position[1] - commons.WINDOW_HEIGHT * 0.5);
+    mpos = (commons.MOUSE_POS[0] + cameraPosition[0] - commons.WINDOW_WIDTH * 0.5, commons.MOUSE_POS[1] + cameraPosition[1] - commons.WINDOW_HEIGHT * 0.5);
     for enemy in enemies:
         if enemy.rect.collidepoint(mpos):
             text1 = commons.DEFAULTFONT.render(enemy.name + " " + str(math.ceil(enemy.HP)) + "/" + str(enemy.maxHP), True, (255, 255, 255));
@@ -294,3 +294,12 @@ def DrawEnemyHoverText():
                 
             commons.screen.blit(text1, (commons.MOUSE_POS[0] - text1.get_width() * 0.5, commons.MOUSE_POS[1] - 40));
             break;
+
+def KillAllEntities():
+    enemies.clear();
+    particles.clear();
+    projectiles.clear();
+    physicsItems.clear();
+    messages.clear();
+    damageNumbers.clear();
+    recentPickups.clear();

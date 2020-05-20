@@ -2,12 +2,16 @@
 __author__ = "Fergus Griggs";
 __email__ = "fbob987 at gmail dot com";
 
-import pygame;
+import pygame, math;
 from pygame.locals import *;
 
 import commons;
 import surface_manager;
 import tables;
+
+def NormalizeVector2(vector):
+    magnitude = math.sqrt(vector[0] ** 2 + vector[1] ** 2);
+    return (vector[0] / magnitude, vector[1] / magnitude);
 
 def GetOnOff(booleanVariable):
     if booleanVariable:
@@ -28,20 +32,20 @@ def GetBlockAverageColour(val):
     return colour;
 
 def GetTierColour(tier):
-    if tier < 0:return(150, 150, 150)#gray
-    elif tier == 1:return(146, 146, 249)#Blue
-    elif tier == 2:return(146, 249, 146)#Green
-    elif tier == 3:return(233, 182, 137)#Orange
-    elif tier == 4:return(253, 148, 148)#Light Red
-    elif tier == 5:return(249, 146, 249)#Pink
-    elif tier == 6:return(191, 146, 233)#Light Purple
-    elif tier == 7:return(139, 237, 9)#Lime
-    elif tier == 8:return(233, 233, 9)#Yellow
-    elif tier == 9:return(3, 138, 177)#Cyan
-    elif tier == 10:return(229, 35, 89)#Red
-    elif tier > 10:return(170, 37, 241)#Purple
+    if tier < 0: return(150, 150, 150)#Gray
+    elif tier == 1: return(146, 146, 249)#Blue
+    elif tier == 2: return(146, 249, 146)#Green
+    elif tier == 3: return(233, 182, 137)#Orange
+    elif tier == 4: return(253, 148, 148)#Light Red
+    elif tier == 5: return(249, 146, 249)#Pink
+    elif tier == 6: return(191, 146, 233)#Light Purple
+    elif tier == 7: return(139, 237, 9)#Lime
+    elif tier == 8: return(233, 233, 9)#Yellow
+    elif tier == 9: return(3, 138, 177)#Cyan
+    elif tier == 10: return(229, 35, 89)#Red
+    elif tier > 10: return(170, 37, 241)#Purple
     else:
-        return(255, 255, 255, 255)#white
+        return(255, 255, 255, 255); #White
 
 def RotateSurface(image, angle):
     originalRect = image.get_rect();

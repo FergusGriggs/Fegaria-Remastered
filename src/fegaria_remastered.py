@@ -204,7 +204,7 @@ def RunSplashScreen():
 
                 if commons.PARTICLES:
                     for i in range(int(4 * commons.PARTICLEDENSITY)):
-                        entity_manager.SpawnParticle((xpos + commons.PLAYER_WIDTH - commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT * 0.25 + commons.PLAYER_HEIGHT * 1.15), (255, 255, 255), life = 0.5, GRAV = -3, size = 10, angle = math.pi, spread = math.pi, magnitude = random.random() * 8);
+                        entity_manager.SpawnParticle((xpos + commons.PLAYER_WIDTH - commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT * 0.25 + commons.PLAYER_HEIGHT * 1.15), (255, 255, 255), life = 0.5, GRAV = -0.4, size = 10, angle = math.pi, spread = math.pi, magnitude = random.random() * 8);
 
             else:
                 fastTick -= commons.DELTA_TIME;
@@ -241,12 +241,16 @@ def RenderStatsText(pos):
 
     if pos[0] == "H":
         item = entity_manager.clientPlayer.hotbar[pos[1]];
+
     elif pos[0] == "I":
         item = entity_manager.clientPlayer.inventory[pos[1][0]][pos[1][1]];
-    elif pos[0]=="C":
+
+    elif pos[0] == "C":
         item = entity_manager.clientPlayer.chestItems[pos[1][0]][pos[1][1]];
-    elif pos[0]=="CM":
+
+    elif pos[0] == "CM":
         item = Item(entity_manager.clientPlayer.craftableItems[pos[1]][0], forceNoPrefix = True);
+
     if item != None:
         if item != lastHoveredItem: 
             lastHoveredItem = item;
@@ -257,14 +261,24 @@ def RenderStatsText(pos):
             stats = [];
             stats.append(shared_methods.OutlineText(item.GetName(), shared_methods.GetTierColour(item.tier), commons.DEFAULTFONT));
             if "weapon" in item.tags or "tool" in item.tags:
-                stats.append(shared_methods.OutlineText(str(int(item.attackDamage)) + " damage",(255,255,255), commons.DEFAULTFONT));
-                stats.append(shared_methods.OutlineText(str(int(item.critStrikeChance * 100)) + "% critical strike chance", (255, 255, 255), commons.DEFAULTFONT));
+                stats.append(shared_methods.OutlineText(str(round(item.attackDamage, 1)).rstrip('0').rstrip('.') + " damage", (255,255,255), commons.DEFAULTFONT));
+                stats.append(shared_methods.OutlineText(str(round(item.critStrikeChance * 100, 1)).rstrip('0').rstrip('.') + "% critical strike chance", (255, 255, 255), commons.DEFAULTFONT));
                 stats.append(shared_methods.OutlineText(GetSpeedText(item.attackSpeed), (255, 255, 255), commons.DEFAULTFONT))
                 stats.append(shared_methods.OutlineText(GetKnockbackText(item.knockback), (255, 255, 255), commons.DEFAULTFONT))
-            elif "material" in item.tags:
+            
+            if "ammo" in item.tags:
+                stats.append(shared_methods.OutlineText("Ammunition", (255, 255, 255), commons.DEFAULTFONT));
+                stats.append(shared_methods.OutlineText(str(tables.projectileData[tables.itemData[item.ID][6]][2]) + " damage", (255, 255, 255), commons.DEFAULTFONT));
+                stats.append(shared_methods.OutlineText(GetKnockbackText(tables.projectileData[tables.itemData[item.ID][6]][3]), (255, 255, 255), commons.DEFAULTFONT));
+                stats.append(shared_methods.OutlineText(str(round(tables.projectileData[tables.itemData[item.ID][6]][7] * 100, 1)) + "% gravity", (255, 255, 255), commons.DEFAULTFONT));
+                stats.append(shared_methods.OutlineText(str(round(tables.projectileData[tables.itemData[item.ID][6]][8] * 100, 1)) + "% drag", (255, 255, 255), commons.DEFAULTFONT));
+
+            if "material" in item.tags:
                 stats.append(shared_methods.OutlineText("Material", (255, 255, 255), commons.DEFAULTFONT));
-            elif "block" in item.tags:
-                stats.append(shared_methods.OutlineText("Can be placed.", (255, 255, 255), commons.DEFAULTFONT));
+            
+            if "block" in item.tags:
+                stats.append(shared_methods.OutlineText("Can be placed", (255, 255, 255), commons.DEFAULTFONT));
+
             if item.description != "None":
                 stats.append(shared_methods.OutlineText(item.description, (255, 255, 255), commons.DEFAULTFONT));
             if item.hasPrefix:
@@ -362,16 +376,16 @@ def UpdateLight(threadName, threadID):
         YMINCHANGE = -YMIN;
         YMIN = 0;
 
-    if XMIN >= world.MAP_SIZE_X or  YMIN >= world.MAP_SIZE_Y or XMAX < 0 or YMAX < 0:
+    if XMIN >= world.WORLD_SIZE_X or  YMIN >= world.WORLD_SIZE_Y or XMAX < 0 or YMAX < 0:
         threadActive = False;
         return;
 
     tempPos = ((targetPosition[0] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEX + XMINCHANGE) * commons.BLOCKSIZE, (targetPosition[1] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEY + YMINCHANGE) * commons.BLOCKSIZE);
     
-    if XMAX > world.MAP_SIZE_X:
-        XMAX = world.MAP_SIZE_X;
-    if YMAX > world.MAP_SIZE_Y:
-        YMAX = world.MAP_SIZE_Y;
+    if XMAX > world.WORLD_SIZE_X:
+        XMAX = world.WORLD_SIZE_X;
+    if YMAX > world.WORLD_SIZE_Y:
+        YMAX = world.WORLD_SIZE_Y;
 
     #timeBefore = pygame.time.get_ticks();
 
@@ -379,7 +393,7 @@ def UpdateLight(threadName, threadID):
         for j in range(YMIN, YMAX):
             mapLight[i][j] = max(0, mapLight[i][j] - 4);
 
-    #mapLight = [[0 for i in range(world.MAP_SIZE_Y)] for j in range(world.MAP_SIZE_X)];
+    #mapLight = [[0 for i in range(world.WORLD_SIZE_Y)] for j in range(world.WORLD_SIZE_X)];
     
 
     for i in range(XMIN, XMAX):
@@ -389,7 +403,7 @@ def UpdateLight(threadName, threadID):
                     FillLight(i, j, globalLighting);
                 #else:
                     #FillLight(i, j, 4);
-            elif world.mapData[i][j][0] == 13 or world.mapData[i][j][1] == 13:
+            elif world.mapData[i][j][0] == 264:
                 FillLight(i, j, 14);
     
     #print("Fill Light MS: ", pygame.time.get_ticks() - timeBefore);
@@ -459,6 +473,12 @@ def GetKnockbackText(knockback):
         return "Strong knockback";
     else:
         return "Very strong knockback";
+
+def GetBouncesText(bounces):
+    if bounces == 0:
+        return "No bounces";
+    else:
+        return str(bounces) + " bounces";
 
 def AddPlus(string):
     if string[0]!="-":
@@ -554,7 +574,7 @@ def DrawInventoryHoverText():
 
                         if itemAddData[2] == "I":
                             entity_manager.clientPlayer.inventory[pos[1][0]][pos[1][1]] = commons.ITEM_HOLDING;
-                        elif itemAddData[2]=="C":
+                        elif itemAddData[2] == "C":
                             entity_manager.clientPlayer.chestItems[pos[1][0]][pos[1][1]] = commons.ITEM_HOLDING;
                         else:
                             entity_manager.clientPlayer.hotbar[pos[1]] = commons.ITEM_HOLDING;
@@ -597,7 +617,9 @@ def DrawInventoryHoverText():
             velocity = (4, -random.random());
         else:
             velocity = (-4, -random.random());
-        entity_manager.SpawnPhysicsItem(entity_manager.clientPlayer.position, commons.ITEM_HOLDING.ID, commons.ITEM_HOLDING.tier, amnt = commons.ITEM_HOLDING.amnt, pickupDelay = 250, unique = unique, item = commons.ITEM_HOLDING, velocity = velocity);
+
+        entity_manager.SpawnPhysicsItem(commons.ITEM_HOLDING, entity_manager.clientPlayer.position, pickupDelay = 250, velocity = velocity);
+        
         commons.IS_HOLDING_ITEM = False;
         canDropHolding = False;
         commons.ITEM_HOLDING = None;
@@ -629,12 +651,13 @@ def DrawExitButton():
     text = shared_methods.OutlineText("Quit", colour, commons.DEFAULTFONT);
     commons.screen.blit(text, (left, top));
 
-def RenderSpecialBlockHover():
-    if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0],commons.TILE_POSITION_MOUSE_HOVERING[1]):
+def RenderInteractableBlockHover():
+    if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
         val = world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0];
-        if val > 255:
+        if val >= 255:
             ID = tables.tileData[val][0];
-            commons.screen.blit(surface_manager.items[ID], commons.MOUSE_POS);
+            if "interactable" in tables.itemData[ID][1]:
+                commons.screen.blit(surface_manager.items[ID], commons.MOUSE_POS);
 
 goodColour = (10, 230, 10);
 badColour = (230, 10, 10);
@@ -720,8 +743,9 @@ while gameRunning:
     commons.DELTA_TIME = (pygame.time.get_ticks() - oldTimeMilliseconds) * 0.001;
     oldTimeMilliseconds = pygame.time.get_ticks();
 
-    if commons.DELTA_TIME > 0.1:
-        commons.DELTA_TIME = 0.1;
+    #If framerate is less than 30, simulate at a slower speed
+    if commons.DELTA_TIME > 0.033333:
+        commons.DELTA_TIME = 0.033333;
 
     if pygame.key.get_mods() & KMOD_LSHIFT:
         commons.SHIFT_ACTIVE = True;
@@ -749,6 +773,8 @@ while gameRunning:
         entity_manager.UpdateDamageNumbers();
         entity_manager.UpdateRecentPickups();
         
+        world.CheckGrowGrass();
+
         tempCamPosX = entity_manager.cameraPosition[0];
         tempCamPosY = entity_manager.cameraPosition[1];
 
@@ -824,7 +850,6 @@ while gameRunning:
         entity_manager.DrawParticles();
         entity_manager.DrawEnemies();
         entity_manager.DrawPhysicsItems();
-        RenderSpecialBlockHover();
                 
         if commons.EXPERIMENTALLIGHTING:
             if not threadActive:
@@ -835,12 +860,12 @@ while gameRunning:
             commons.screen.blit(newestLightSurf, (newestLightSurfPos[0] - entity_manager.cameraPosition[0] + commons.WINDOW_WIDTH * 0.5, newestLightSurfPos[1] - entity_manager.cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5));
 
 ##            if newestLightSurf.get_width()<(10+LIGHTRENDERDISTANCEX*2)*commons.BLOCKSIZE:
-##                if entity_manager.cameraPosition[0]<world.MAP_SIZE_X*commons.BLOCKSIZE/2:
+##                if entity_manager.cameraPosition[0]<world.WORLD_SIZE_X*commons.BLOCKSIZE/2:
 ##                    lightOffsetX=-(10+LIGHTRENDERDISTANCEX*2)*commons.BLOCKSIZE-newestLightSurf.get_width()
 ##                else:
 ##                    lightOffsetX=(10+LIGHTRENDERDISTANCEX*2)*commons.BLOCKSIZE-newestLightSurf.get_width()
 ##            if newestLightSurf.get_height()<(10+LIGHTRENDERDISTANCEY*2)*commons.BLOCKSIZE:
-##                if entity_manager.cameraPosition[1]<world.MAP_SIZE_Y*commons.BLOCKSIZE/2:
+##                if entity_manager.cameraPosition[1]<world.WORLD_SIZE_Y*commons.BLOCKSIZE/2:
 ##                    lightOffsetY=-(10+LIGHTRENDERDISTANCEY*2)*commons.BLOCKSIZE-newestLightSurf.get_height()
 ##                else:
 ##                    lightOffsetY=(10+LIGHTRENDERDISTANCEY*2)*commons.BLOCKSIZE-newestLightSurf.get_height()
@@ -854,6 +879,7 @@ while gameRunning:
         entity_manager.DrawDamageNumbers();
         entity_manager.DrawEnemyHoverText();
         entity_manager.DrawRecentPickups();
+        RenderInteractableBlockHover();
 
         if entity_manager.clientPrompt != None:
             entity_manager.clientPrompt.Draw();
@@ -950,17 +976,17 @@ while gameRunning:
                             world.mapData = pickle.load(open("res/worlds/" + commons.WORLD_SAVE_OPTIONS[i][0] + ".wrld","rb")); #open selected save wrld file
                             world.clientWorld = pickle.load(open("res/worlds/" + commons.WORLD_SAVE_OPTIONS[i][0] + ".dat","rb")); #open selected save dat file
                             
-                            world.MAP_SIZE_X, world.MAP_SIZE_Y = len(world.mapData), len(world.mapData[0]);
+                            world.WORLD_SIZE_X, world.WORLD_SIZE_Y = len(world.mapData), len(world.mapData[0]);
 
-                            BIOMEBOARDER_X1 = world.MAP_SIZE_X * 0.333333;
-                            BIOMEBOARDER_X2 = world.MAP_SIZE_X * 0.666666;
+                            BIOMEBOARDER_X1 = world.WORLD_SIZE_X * 0.333333;
+                            BIOMEBOARDER_X2 = world.WORLD_SIZE_X * 0.666666;
                             world.BORDER_WEST = int(commons.BLOCKSIZE);
-                            world.BORDER_EAST = int(world.MAP_SIZE_X * commons.BLOCKSIZE - commons.BLOCKSIZE);
+                            world.BORDER_EAST = int(world.WORLD_SIZE_X * commons.BLOCKSIZE - commons.BLOCKSIZE);
                             world.BORDER_NORTH = int(commons.BLOCKSIZE*1.5);
-                            world.BORDER_SOUTH = int(world.MAP_SIZE_Y * commons.BLOCKSIZE - commons.BLOCKSIZE * 1.5);
+                            world.BORDER_SOUTH = int(world.WORLD_SIZE_Y * commons.BLOCKSIZE - commons.BLOCKSIZE * 1.5);
 
-                            world.tileMaskData = [[-1 for i in range(world.MAP_SIZE_Y)] for i in range(world.MAP_SIZE_X)];
-                            world.wallTileMaskData = [[-1 for i in range(world.MAP_SIZE_Y)] for i in range(world.MAP_SIZE_X)];
+                            world.tileMaskData = [[-1 for i in range(world.WORLD_SIZE_Y)] for i in range(world.WORLD_SIZE_X)];
+                            world.wallTileMaskData = [[-1 for i in range(world.WORLD_SIZE_Y)] for i in range(world.WORLD_SIZE_X)];
                             backgroundID = 3;
 
                             entity_manager.CreatePlayer();
@@ -978,6 +1004,7 @@ while gameRunning:
                             pygame.display.flip();
                             world.CreateTerrainSurface();
 
+                            entity_manager.cameraPosition = (world.clientWorld.spawnPosition[0], 0);
                             entity_manager.clientPlayer.position = tuple(world.clientWorld.spawnPosition);
                             entity_manager.clientPlayer.RenderCurrentItemImage();
                             entity_manager.clientPlayer.RenderHotbar();
@@ -985,9 +1012,9 @@ while gameRunning:
 
                             RenderHandText();
                             
-                            mapLight = [[0 for i in range(world.MAP_SIZE_Y)]for j in range(world.MAP_SIZE_X)];
-                            for i in range(world.MAP_SIZE_X - 1):
-                                for j in range(world.MAP_SIZE_Y - 1):
+                            mapLight = [[0 for i in range(world.WORLD_SIZE_Y)]for j in range(world.WORLD_SIZE_X)];
+                            for i in range(world.WORLD_SIZE_X - 1):
+                                for j in range(world.WORLD_SIZE_Y - 1):
                                     if world.mapData[i][j][0] == -1 and world.mapData[i][j][1] == -1 and j < 110:
                                         mapLight[i][j] = globalLighting;
                                     else:
@@ -1117,7 +1144,7 @@ while gameRunning:
                 if event.key == K_a:
                     entity_manager.clientPlayer.movingLeft = True;
                     entity_manager.clientPlayer.animationFrame = random.randint(17, 29);
-                    if not entity_manager.clientPlayer.armSwing:
+                    if not entity_manager.clientPlayer.swingingArm:
                         entity_manager.clientPlayer.armAnimationFrame = random.randint(26, 39);
                     if entity_manager.clientPlayer.direction == 1:
                         entity_manager.clientPlayer.itemSwing = False;
@@ -1127,7 +1154,7 @@ while gameRunning:
                 if event.key == K_d:
                     entity_manager.clientPlayer.movingRight = True;
                     entity_manager.clientPlayer.animationFrame = random.randint(2, 15);
-                    if not entity_manager.clientPlayer.armSwing:
+                    if not entity_manager.clientPlayer.swingingArm:
                         entity_manager.clientPlayer.armAnimationFrame = random.randint(6, 19);
                     if entity_manager.clientPlayer.direction == 0:
                         entity_manager.clientPlayer.itemSwing = False;
@@ -1146,7 +1173,7 @@ while gameRunning:
                 if event.key == K_x:
                     if commons.SHIFT_ACTIVE:
                         while len(entity_manager.enemies) > 0:
-                            entity_manager.enemies[0].Kill();
+                            entity_manager.enemies[0].Kill((0, -50));
                         entity_manager.AddMessage("All enemies killed", (255, 223, 10), outlineColour = (80, 70, 3));
                 
                 # Spawn Enemy Cheat
@@ -1207,6 +1234,16 @@ while gameRunning:
                             tileID = world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0];
                             entity_manager.AddMessage("Tile at (" + str(commons.TILE_POSITION_MOUSE_HOVERING[0]) + ", " + str(commons.TILE_POSITION_MOUSE_HOVERING[1]) + ") has ID: " + str(tileID), (255, 223, 10), outlineColour = (80, 70, 3));
                 
+                # Spawn loot chest at mouse
+                if event.key == K_m:
+                    if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
+                        world.SpawnLootChest(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]);
+
+                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1], affectOthers = False);
+                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0] + 1, commons.TILE_POSITION_MOUSE_HOVERING[1], affectOthers = False);
+                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1] + 1, affectOthers = False);
+                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0] + 1, commons.TILE_POSITION_MOUSE_HOVERING[1] + 1, affectOthers = False);
+
                 # Toggle UI
                 if event.key == K_u:
                     commons.DRAWUI = not commons.DRAWUI;

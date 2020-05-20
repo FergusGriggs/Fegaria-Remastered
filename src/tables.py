@@ -19,39 +19,40 @@ platformBlocks = [257];
 
 
 #         Item information
-#                  0                          1                                    2                                                             3                                                       4                       5
-#         ||     Name     ||                Tags                  ||      Possible Prefix Types      ||attdamage|attspeed|critchance|size|vel|manaCost|knockback|tier|buyCost|sellPrice|stackCount||      Description      ||  tileVal
-itemData = [[          "Dirt",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                        "Looks dirty",    0], #01
-            [         "Stone",                  ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                 None,    1], #02
-            [          "Snow",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],           "It's starting to melt...",    2], #02
-            [           "Ice",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                     "It's icy cold.",    3], #03
-            [          "Wood",                  ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                   "Looks craftable.",    4], #04
-            [         "Grass",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                 None,    5], #05
-            [        "Copper",                  ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                    "Looks maleable.",    6], #06
-            [        "Silver",                  ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                    "Looks maleable.",    7], #07
-            [          "Sand",                  ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999], "It's falling through your fingers.",    8], #08
-            [     "Sandstone",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                  "It looks ancient.",    9], #09
-            [         "Trunk",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                 None,   10], #10
-            [        "Leaves",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                 None,   11], #11
-            [   "Snow Leaves",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                 None,   12], #12
-            [      "Platform",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],      "A good alternative to stairs.",  257], #13
-            [  "Wooden Sword",                    ["melee", "weapon"],  ["melee", "common", "universal"], [   7,   30, 0.04,  40, None, None,    4,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],                        "Go get 'em!", None], #14
-            [  "Copper Sword",                    ["melee", "weapon"],  ["melee", "common", "universal"], [   8,   26, 0.04,  45, None, None,    5,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],                        "Go get 'em!", None], #15
-            [    "GOD SLAYER",                    ["melee", "weapon"],  ["melee", "common", "universal"], [  10,    1,  0.1, 100, None, None,   12, 10, [0, 0, 0, 0], [0, 0, 0, 0],   1],                            "Divine.", None], #16
-            [    "Wooden Bow",            ["ranged", "weapon", "bow"], ["ranged", "common", "universal"], [   4,   29, 0.04,  50,   70, None,    1,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],              "Shoots pointy things.", None], #17
-            [  "Wooden Arrow",                   ["material", "ammo"],                                [], [None, None, None,  50, None, None, None,  0, [0, 0, 0, 0], [0, 0, 0, 0], 999],                            "Pointy.", None], #18
-            [        "Musket",            ["ranged", "weapon", "gun"], ["ranged", "common", "universal"], [  31,   65, 0.04,  50,   80, None, 3.25,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],         "You know how to fire that?", None], #19
-            [   "Musket Ball",                   ["material", "ammo"],                                [], [None, None, None,  50, None, None, None,  0, [0, 0, 0, 0], [0, 0, 0, 0], 999],                             "Blunt.", None], #20
-            [   "Copper Coin",                       ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 100],  "Keep the change ya filthy animal.", None], #21
-            [   "Silver Coin",                       ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 100],           "It is cold to the touch.", None], #22
-            [     "Gold Coin",                       ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 100],                  "oooooh,  shiny...", None], #23
-            [ "Platinum Coin",                       ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                      "You're rich!.", None], #24
-            ["Copper Pickaxe",                    ["pickaxe", "tool"],           ["universal", "common"], [   4,   25, 0.04,  40, None, None,    2,  0,         None,         None,   1], "The power of destruction is yours.", None], #25
-            [           "Gel",                           ["material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                            "Sticky.", None], #26
-            [  "Wooden Chest",          ["special", "chest", "block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                 "Fill it with loot!", [(255, 0, 0), (256, 1, 0), (265, 0, 1), (266, 1, 1)], [(0, 2), (1, 2)]], #27
-            ["Crafting Table", ["special", "crafting table", "block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999], "In a time of destruction,  create.", [(267, 0, 0), (268, 1, 0)], [(0, 1), (1, 1)]], #28
-            [   "Wooden Door",           ["special", "door", "block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                "Amazing technology.", [(261, 0, 0), (271, 0, 1), (281, 0, 2)], [(0, -1), (0, 3)]], #29
-            [          "Lamp",                              ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                      "Light it up!",   13], #30
+#                  0                                    1                                               2                                                             3                                                       4                       5                 6
+#         ||     Name     ||                          Tags                             ||      Possible Prefix Types      ||attdamage|attspeed|critchance|size|vel|manaCost|knockback|tier|buyCost|sellPrice|stackCount||      Description      || tileVal||  Extra Item Information ||
+itemData = [[          "Dirt",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                       "Looks dirty",    0], #01
+            [         "Stone",                                     ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                None,    1], #02
+            [          "Snow",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],          "It's starting to melt...",    2], #02
+            [           "Ice",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                     "It's icy cold",    3], #03
+            [          "Wood",                                     ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                   "Looks craftable",    4], #04
+            [         "Grass",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                None,    5], #05
+            [        "Copper",                                     ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                    "Looks maleable",    6], #06
+            [        "Silver",                                     ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                    "Looks maleable",    7], #07
+            [          "Sand",                                     ["block", "material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999], "It's falling through your fingers",    8], #08
+            [     "Sandstone",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                  "It looks ancient",    9], #09
+            [         "Trunk",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                None,   10], #10
+            [        "Leaves",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                None,   11], #11
+            [   "Snow Leaves",                                                 ["block"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                                None,   12], #12
+            [      "Platform",                                      ["block", "nowall"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],      "A good alternative to stairs",  257], #13
+            [  "Wooden Sword",                                       ["melee", "weapon"],  ["melee", "common", "universal"], [   7,   30, 0.04,  40, None, None,    4,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],                       "Go get 'em!", None], #14
+            [  "Copper Sword",                                       ["melee", "weapon"],  ["melee", "common", "universal"], [   8,   26, 0.04,  45, None, None,    5,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],                       "Go get 'em!", None], #15
+            [    "GOD SLAYER",                                       ["melee", "weapon"],  ["melee", "common", "universal"], [  10,    1,  0.1, 100, None, None,   12, 10, [0, 0, 0, 0], [0, 0, 0, 0],   1],                            "Divine", None], #16
+            [    "Wooden Bow",                               ["ranged", "weapon", "bow"], ["ranged", "common", "universal"], [   4,   29, 0.04,  50,   50, None,    1,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],              "Shoots pointy things", None], #17
+            [  "Wooden Arrow",                                      ["material", "ammo"],                                [], [None, None, None,  50, None, None, None,  0, [0, 0, 0, 0], [0, 0, 0, 0], 999],                            "Pointy", None, 0], #18
+            [        "Musket",                               ["ranged", "weapon", "gun"], ["ranged", "common", "universal"], [  31,   65, 0.04,  50,   60, None, 3.25,  0, [0, 0, 0, 0], [0, 0, 0, 0],   1],        "You know how to fire that?", None], #19
+            [   "Musket Ball",                                      ["material", "ammo"],                                [], [None, None, None,  50, None, None, None,  0, [0, 0, 0, 0], [0, 0, 0, 0], 999],                             "Blunt", None, 1], #20
+            [   "Copper Coin",                                          ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 100],  "Keep the change ya filthy animal", None, 2], #21
+            [   "Silver Coin",                                          ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 100],           "It is cold to the touch", None, 3], #22
+            [     "Gold Coin",                                          ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 100],                    "Oooh, shiny...", None, 4], #23
+            [ "Platinum Coin",                                          ["ammo", "coin"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                      "You're rich!", None, 5], #24
+            ["Copper Pickaxe",                                       ["pickaxe", "tool"],           ["universal", "common"], [   4,   25, 0.04,  40, None, None,    2,  0,         None,         None,   1], "The power of destruction is yours", None], #25
+            [           "Gel",                                              ["material"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                            "Sticky", None], #26
+            [  "Wooden Chest", ["nowall", "chest", "block", "multitile", "interactable"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                "Fill it with loot!", [(255, 0, 0), (256, 1, 0), (265, 0, 1), (266, 1, 1)], [(0, 2), (1, 2)]], #27
+            ["Crafting Table",        ["nowall", "crafting table", "block", "multitile"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999], "In a time of destruction,  create", [(267, 0, 0), (268, 1, 0)], [(0, 1), (1, 1)]], #28
+            [   "Wooden Door",  ["nowall", "door", "block", "multitile", "interactable"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                "Amazing technology", [(261, 0, 0), (271, 0, 1), (281, 0, 2)], [(0, -1), (0, 3)]], #29
+            [          "Lamp",                                       ["block", "nowall"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                      "Light it up!",  264], #30
+            [         "Spike",                                       ["block", "nowall"],                                [], [None, None, None,   1, None, None, None,  0,         None,         None, 999],                "It's spikey, ouch!",  258], #30
            ];
 
 
@@ -90,10 +91,10 @@ tileData = [[0, 2],  [1, 2],  [2, 2],  [3, 2],  [4, 2],  [5, 2],  [6, 2],  [7, 2
                 [],      [],      [],      [],      [],      [],      [],      [], # 232 -> 239
                 [],      [],      [],      [],      [],      [],      [],      [], # 240 -> 247
                 [],      [],      [],      [],      [],      [],      [], [27, 1], # 248 -> 255
-           [27, 1], [13, 1],      [], [29, 1], [29, 1], [29, 1], [29, 1], [29, 1], # 256 -> 263
-                [], [27, 1], [27, 1], [28, 1], [28, 1], [29, 1], [29, 1], [29, 1], # 264 -> 271
+           [27, 1], [13, 1], [31, 1], [29, 1], [29, 1], [29, 2], [29, 1], [29, 1], # 256 -> 263
+           [30, 0], [27, 1], [27, 1], [28, 1], [28, 1], [29, 1], [29, 1], [29, 2], # 264 -> 271
            [29, 1], [29, 1],      [],      [],      [],      [],      [], [29, 1], # 272 -> 279
-           [29, 1], [29, 1], [29, 1], [29, 1],      [],      [],      [],      [], # 280 -> 287
+           [29, 1], [29, 2], [29, 1], [29, 1],      [],      [],      [],      [], # 280 -> 287
            [0, 1]# air
           ];
 
@@ -111,34 +112,38 @@ enemyData = [[ "Green Slime", "Slime", 14,      0,     -0.2,     6, (10,  200,  
 
 #                Projectile Information
 #
-#                ||     Name     |   Type  |Damage|Velocity|Knockback|Bounces|Hitbox Size|  Trail  |Gravity|Drag Mod|Something|
-projectileData = [["Wooden Arrow",  "Arrow",     5,       5,        0,      0,         10,  "arrow",      0.75,    0.99,       16],
-                  [ "Musket Ball", "Bullet",     7,      10,        2,      0,          8, "bullet",      0.05,       1,       17],
+#                ||     Name     |   Type  | Damage |Knockback|Bounces|Hitbox Size|  Trail  |  Gravity |Drag Mod|Sound ID |
+projectileData = [  ["Wooden Arrow",  "Arrow",     5,        0,      0,         13,  "arrow",       0.5,       1,       16],
+                  [   "Musket Ball", "Bullet",     7,        2,      0,         10, "bullet",      0.05,     0.1,       17],
+                  [   "Copper Coin", "Bullet",     1,        2,      0,         10, "bullet",      0.40,       3,       17],
+                  [   "Silver Coin", "Bullet",     3,        2,      0,         10, "bullet",      0.20,       2,       17],
+                  [     "Gold Coin", "Bullet",    15,        2,      0,         10, "bullet",      0.10,       1,       17],
+                  [ "Platinum Coin", "Bullet",    50,        2,      0,         10, "bullet",      0.05,     0.1,       17],
                  ];
 
 
 #                Special Tile Information
 #
-#                 ||Relative Origin|            Linked Tiles Relative Positions             |String ID|     Name    |Item ID|  Misc Data  ||
-specialTileData = [(         (0, 0),                        ((0, 0), (1, 0), (1, 1), (0, 1)),    "CTL",      "CHEST",     27), #255
-                   (        (-1, 0),                      ((0, 0), (-1, 0), (-1, 1), (0, 1)),    "CTR",      "CHEST",     27), #256
-                   (         (0, 0),                                               ((0, 0),),      "C",   "PLATFORM",     13), #257
-                   None, #258          
-                   (         (0, 0),        ((0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)),   "OLTL",       "DOOR",     29, ((261, 1, 0), (271, 1, 1), (281, 1, 2), (-1, 0, 0), (-1, 0, 1), (-1, 0, 2))), #259
-                   (        (-1, 0),     ((0, 0), (-1, 0), (0, 1), (-1, 1), (0, 2), (-1, 2)),   "OLTR",       "DOOR",     29), #260
-                   (         (0, 0),                                ((0, 0), (0, 1), (0, 2)),     "CT",       "DOOR",     29, (((259, -1, 0), (260, 0, 0), (269, -1, 1), (270, 0, 1), (279, -1, 2), (280, 0, 2)), ((262, 0, 0), (263, 1, 0), (272, 0, 1), (273, 1, 1), (282, 0, 2), (283, 1, 2)))), #261
-                   (         (0, 0),        ((0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)),   "ORTL",       "DOOR",     29, ((261, 0, 0), (271, 0, 1), (281, 0, 2), (-1, 1, 0), (-1, 1, 1), (-1, 1, 2))), #262
-                   (        (-1, 0),     ((0, 0), (-1, 0), (0, 1), (-1, 1), (0, 2), (-1, 2)),   "ORTR",       "DOOR",     29), #263
-                   None, #264          
-                   (        (0, -1),                      ((0, 0), (1, 0), (0, -1), (1, -1)),    "CBL",      "CHEST",     27), #265
-                   (       (-1, -1),                    ((0, 0), (-1, 0), (-1, -1), (0, -1)),    "CBR",      "CHEST",     27), #266
-                   (         (0, 0),                                        ((0, 0), (1, 0)),      "L", "CRAFTTABLE",     28), #267
-                   (        (-1, 0),                                       ((0, 0), (-1, 0)),      "R", "CRAFTTABLE",     28), #268
-                   (        (0, -1),      ((0, -1), (1, -1), (0, 0), (1, 0), (0, 1), (1, 1)),   "OLML",       "DOOR",     29), #269
-                   (       (-1, -1),   ((-1, -1), (0, -1), (-1, 0), (0, 0), (-1, 1), (0, 1)),   "OLMR",       "DOOR",     29), #270
-                   (        (0, -1),                               ((0, 0), (0, -1), (0, 1)),     "CM",       "DOOR",     29), #271
-                   (        (0, -1),      ((0, -1), (1, -1), (0, 0), (1, 0), (0, 1), (1, 1)),   "ORML",       "DOOR",     29), #272
-                   (       (-1, -1),   ((-1, -1), (0, -1), (-1, 0), (0, 0), (-1, 1), (0, 1)),   "ORMR",       "DOOR",     29), #273
+#                 ||Relative Origin|            Linked Tiles Relative Positions             |String Tile ID|     Name    |Item ID|  Misc Data  ||
+specialTileData = [(         (0, 0),                        ((0, 0), (1, 0), (1, 1), (0, 1)),         "CTL",      "CHEST",     27), #255
+                   (        (-1, 0),                      ((0, 0), (-1, 0), (-1, 1), (0, 1)),         "CTR",      "CHEST",     27), #256
+                   (         (0, 0),                                               ((0, 0),),           "C",   "PLATFORM",     13), #257
+                   (         (0, 0),                                               ((0, 0),),           "C",      "SPIKE",     31), #258       
+                   (         (0, 0),        ((0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)),        "OLTL",       "DOOR",     29, ((261, 1, 0), (271, 1, 1), (281, 1, 2), (-1, 0, 0), (-1, 0, 1), (-1, 0, 2))), #259
+                   (        (-1, 0),     ((0, 0), (-1, 0), (0, 1), (-1, 1), (0, 2), (-1, 2)),        "OLTR",       "DOOR",     29), #260
+                   (         (0, 0),                                ((0, 0), (0, 1), (0, 2)),          "CT",       "DOOR",     29, (((259, -1, 0), (260, 0, 0), (269, -1, 1), (270, 0, 1), (279, -1, 2), (280, 0, 2)), ((262, 0, 0), (263, 1, 0), (272, 0, 1), (273, 1, 1), (282, 0, 2), (283, 1, 2)))), #261
+                   (         (0, 0),        ((0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)),        "ORTL",       "DOOR",     29, ((261, 0, 0), (271, 0, 1), (281, 0, 2), (-1, 1, 0), (-1, 1, 1), (-1, 1, 2))), #262
+                   (        (-1, 0),     ((0, 0), (-1, 0), (0, 1), (-1, 1), (0, 2), (-1, 2)),        "ORTR",       "DOOR",     29), #263
+                   (         (0, 0),                                               ((0, 0),),           "C",       "LAMP",     30), #264   
+                   (        (0, -1),                      ((0, 0), (1, 0), (0, -1), (1, -1)),         "CBL",      "CHEST",     27), #265
+                   (       (-1, -1),                    ((0, 0), (-1, 0), (-1, -1), (0, -1)),         "CBR",      "CHEST",     27), #266
+                   (         (0, 0),                                        ((0, 0), (1, 0)),           "L", "CRAFTTABLE",     28), #267
+                   (        (-1, 0),                                       ((0, 0), (-1, 0)),           "R", "CRAFTTABLE",     28), #268
+                   (        (0, -1),      ((0, -1), (1, -1), (0, 0), (1, 0), (0, 1), (1, 1)),        "OLML",       "DOOR",     29), #269
+                   (       (-1, -1),   ((-1, -1), (0, -1), (-1, 0), (0, 0), (-1, 1), (0, 1)),        "OLMR",       "DOOR",     29), #270
+                   (        (0, -1),                               ((0, 0), (0, -1), (0, 1)),          "CM",       "DOOR",     29), #271
+                   (        (0, -1),      ((0, -1), (1, -1), (0, 0), (1, 0), (0, 1), (1, 1)),        "ORML",       "DOOR",     29), #272
+                   (       (-1, -1),   ((-1, -1), (0, -1), (-1, 0), (0, 0), (-1, 1), (0, 1)),        "ORMR",       "DOOR",     29), #273
                    None, #274
                    None, #275
                    None, #276
@@ -207,21 +212,21 @@ prefixData = {
     ],
 
 "ranged":
-    [# ||     Name     |Damage|Speed|Crit Chance|Velocity|Knockback|Tier||
-        [     "Sighted",   0.1,    0,       0.03,       0,        0,   1],
-        [       "Rapid",     0, 0.15,          0,     0.1,        0,   2],
-        [       "Hasty",     0,  0.1,          0,    0.15,        0,   2],
-        ["Intimidating",     0,    0,          0,    0.05,     0.15,   2],
-        [      "Deadly",   0.1, 0.05,       0.02,    0.05,     0.05,   2],
-        [     "Staunch",   0.1,    0,          0,       0,     0.15,   2],
-        [       "Awful", -0.15,    0,          0,    -0.1,     -0.1,  -2],
-        [   "Lethargic",     0, 0.15,          0,    -0.1,        0,  -2],
-        [     "Awkward",     0, -0.1,          0,       0,     -0.2,  -2],
-        [    "Powerful",  0.15, -0.1,       0.01,       0,        0,   1],
-        [   "Frenzying", -0.15, 0.15,          0,       0,        0,   0],
-        [      "Unreal",  0.15,  0.1,       0.05,     0.1,     0.15,   2],
-        [       "ADMIN", 99999,    0.85,          1,       1,        1,  11],
-        [      "fucked",    -1,    0,          0,      -1,        0, -10]
+    [# ||     Name     | Damage  |Speed|Crit Chance|Velocity|Knockback|Tier||
+        [     "Sighted",      0.1,    0,       0.03,       0,        0,   1],
+        [       "Rapid",        0, 0.15,          0,     0.1,        0,   2],
+        [       "Hasty",        0,  0.1,          0,    0.15,        0,   2],
+        ["Intimidating",        0,    0,          0,    0.05,     0.15,   2],
+        [      "Deadly",      0.1, 0.05,       0.02,    0.05,     0.05,   2],
+        [     "Staunch",      0.1,    0,          0,       0,     0.15,   2],
+        [       "Awful",    -0.15,    0,          0,    -0.1,     -0.1,  -2],
+        [   "Lethargic",        0, 0.15,          0,    -0.1,        0,  -2],
+        [     "Awkward",        0, -0.1,          0,       0,     -0.2,  -2],
+        [    "Powerful",     0.15, -0.1,       0.01,       0,        0,   1],
+        [   "Frenzying",    -0.15, 0.15,          0,       0,        0,   0],
+        [      "Unreal",     0.15,  0.1,       0.05,     0.1,     0.15,   2],
+        [       "ADMIN", 99999.99, 0.85,          1,       1,        1,  11],
+        [      "fucked",       -1,    0,          0,      -1,        0, -10]
     ],
 
 "magic":
@@ -257,6 +262,14 @@ craftingData = [((4, ((10, 1))),
 # <w> inserts the world name
 
 deathLines = {
+"spike":
+    [
+    "<p> got impaled by a spike.",
+    "A spike impaled the face of <p>.",
+    "The spikes of <w> eradicated <p>.",
+    "<p> didn't look where they were going.",
+    "<p> found out that spikes are sharp.",
+    ],
 "falling":
     [
     "<p> fell to their death.",
@@ -309,8 +322,8 @@ helpfulTips = ["Too dark? Light things up with a lamp block",
                "1f you c4n r34d 7h15, you r34lly n33d 2 g37 l41d",
                "What do you call a thieving alligator? A Crookodile",
                "If you were a fruit, you'd be a fine-apple",
-               "How do you organize a space party?           You planet.",
-               "What do you call a classy fish?             Sofishticated.",
+               "How do you organize a space party? You planet.",
+               "What do you call a classy fish? Sofishticated.",
                "Did you hear about the guy whose whole left side was cut off? He's all right now.",
                "I wondered why the baseball was getting bigger. Then it hit me.",
                "Thanks for explaining the word 'many' to me, it means a lot.",
@@ -319,8 +332,8 @@ helpfulTips = ["Too dark? Light things up with a lamp block",
                "Claustrophobic people are more productive thinking out of the box.",
                "Atheists don't solve exponential equations, they don't believe in higher powers.",
                "I was addicted to the hokey pokey... but thankfully, I turned myself around.",
-               "What do you call a cow during an earthquake?          A milkshake.",
-               "Did you hear about the kidnapping at school?         It's okay. He woke up.",
+               "What do you call a cow during an earthquake? A milkshake.",
+               "Did you hear about the kidnapping at school? It's okay. He woke up.",
                "Oxygen is a toxic gas. Anyone who inhales oxygen will normally die within 80 years.",
                "R.I.P boiled water. You will be mist.",
                "As a wizard, I enjoy turning objects into glass. Just wanted to make that clear.",
@@ -328,7 +341,7 @@ helpfulTips = ["Too dark? Light things up with a lamp block",
                "I wasn't originally going to get a brain transplant, but then I changed my mind.",
                "I've decided to sell my Hoover... well, it was just collecting dust.",
                "Don't spell part backwards. It's a trap.",
-               "How many tickles does it take to make an octopus laugh?       Ten tickles.",
+               "How many tickles does it take to make an octopus laugh? Ten tickles.",
                "Why did the cross-eyed teacher lose her job?  She couldn't control her pupils."
               ]
 
@@ -350,6 +363,12 @@ exitMessages = ["Are you sure you want to exit?",
                 "Leaving so soon?",
                 "You'll come back someday right?",
                 "So this is goodbye?",
+                "Don't be gone long, k?",
+                "If you quit, I'll look for you, I will find you...",
+                "Running won't help, they'll still get you...",
+                "You're just gonna leave your slime friends?",
+                "When you quit, you're killing slimes...",
+                "You're just gonna play for two seconds then leave?",
                ]
 
 activeMenuButtons = [["MAIN", 0, 2, 3, 4, 5, 6],
@@ -364,5 +383,110 @@ activeMenuButtons = [["MAIN", 0, 2, 3, 4, 5, 6],
                      ["WORLDCREATION", 0, 1, 30, 31, 32, 33, 34],
                      ["WORLDNAMING", 0, 1, 35],
                      ["CHANGES", 0, 1, 36, 37, 38],
-                     
                     ]
+
+structureTiles = [
+    [# Mine shaft hut
+        [-3, -7],
+        [
+            [[ -2, -2], [  4,  4], [  4,  4], [  4,  4], [  4,  4], [  4,  4], [ -2, -2]], 
+            [[  4,  4], [  4,  4], [  4,  4], [  4,  4], [  4,  4], [  4,  4], [  4,  4]],
+            [[  4,  4], [  4,  4], [ -1,  4], [ -1,  4], [ -1,  4], [  4,  4], [  4,  4]],
+            [[ -2, -2], [  1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [  1,  1], [ -2, -2]], 
+            [[ -2, -2], [261,  1], [ -1,  1], [ -1, -1], [ -1,  1], [261,  1], [ -2, -2]], 
+            [[ -2, -2], [271,  1], [ -1,  1], [ -1,  1], [ -1,  1], [271,  1], [ -2, -2]], 
+            [[ -2, -2], [281,  1], [ -1,  1], [ -1,  1], [ -1,  1], [281,  1], [ -2, -2]], 
+            [[ -2, -2], [  1,  1], [257,  4], [257,  4], [257,  4], [  1,  1], [ -2, -2]]
+        ]
+    ],
+    [# Mine shaft vertical
+        [-2, -7],
+        [
+            [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+            [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]],
+            [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]],
+            [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+            [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+            [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+            [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+            [[  1,  1], [257,  4], [257,  4], [257,  4], [  1,  1]]
+        ]
+    ],
+    [# Mine shaft vertical door left
+       [-2, -7],
+       [
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]],
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]],
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+           [[261,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+           [[271,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+           [[281,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+           [[  1,  1], [257,  4], [257,  4], [257,  4], [  1,  1]]
+       ]
+    ],
+    [# Mine shaft vertical door right
+       [-2, -7],
+       [
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]],
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]],
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [  1,  1]], 
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [261,  1]], 
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [271,  1]], 
+           [[  1,  1], [ -1,  4], [ -1,  4], [ -1,  4], [281,  1]], 
+           [[  1,  1], [257,  4], [257,  4], [257,  4], [  1,  1]]
+       ]
+    ],
+    [# Mine shaft vertical bottom
+       [-2, -7],
+       [
+           [[  1,  1], [ -1,  4], [ -1, -2], [ -1,  4], [  1,  1]], 
+           [[  1,  1], [ -1, -2], [ -1,  4], [ -1, -2], [  1,  1]],
+           [[  1,  1], [ -1,  4], [ -2,  4], [ -1,  4], [ -1,  1]],
+           [[  1,  1], [ -2, -2], [ -1, -2], [ -1, -2], [  1,  1]], 
+           [[  1,  1], [ -2,  4], [ -1, -2], [ -2,  4], [ -2, -2]], 
+           [[ -2, -2], [ -2, -2], [ -2, -2], [ -2, -2], [  1,  1]], 
+           [[  1,  1], [ -2, -2], [ -2, -2], [ -2, -2], [ -2, -2]], 
+           [[ -2, -2], [ -2, -2], [ -2, -2], [ -2, -2], [ -2, -2]]
+       ]
+    ],
+    [# Mine shaft chest room left
+       [-12, -3],
+       [
+           [[  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [ -2, -2], [ -2, -2], [ -2, -2]],
+           [[  1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1]], 
+           [[  1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [261,  1], [ -1,  1], [ -1,  1], [ -1,  1]], 
+           [[  1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -3,  1], [ -2,  1], [ -1,  1], [ -1,  1], [ -1,  1], [271,  1], [ -1,  1], [ -1,  1], [ -1,  1]], 
+           [[  1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -2,  1], [ -2,  1], [ -1,  1], [ -1,  1], [ -1,  1], [281,  1], [ -1,  1], [ -1,  1], [ -1,  1]], 
+           [[  1,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1]], 
+           [[  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [ -2, -2], [ -2, -2], [ -2, -2]],
+       ]
+    ],
+    [# Mine shaft chest room right
+       [0, -3],
+       [
+           [[ -2, -2], [ -2, -2], [ -2, -2], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1]],
+           [[  1,  1], [  1,  1], [  1,  1], [  1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [  1,  1]], 
+           [[ -1,  1], [ -1,  1], [ -1,  1], [261,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -1,  1], [  1,  1]], 
+           [[ -1,  1], [ -1,  1], [ -1,  1], [271,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -3,  1], [ -2,  1], [ -1,  1], [ -1,  1], [ -1,  1], [  1,  1]], 
+           [[ -1,  1], [ -1,  1], [ -1,  1], [281,  1], [ -1,  1], [ -1,  1], [ -1,  1], [ -2,  1], [ -2,  1], [ -1,  1], [ -1,  1], [ -1,  1], [  1,  1]], 
+           [[  1,  1], [  1,  1], [  1,  1], [  1,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [258,  1], [  1,  1]], 
+           [[ -2, -2], [ -2, -2], [ -2, -2], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1], [  1,  1]], 
+       ]
+    ],
+    ]
+
+# Special items for loot chests
+#               | Item ID | Chance | Block Depth | Random Count Range |
+specialLoot = [
+                [       19,       1,            0,           [1, 1]],
+              ];
+
+# Misc items for loot chests
+#           | Item ID | Chance | Block Depth | Random Count Range |
+miscLoot = [
+            [       18,   0.333,            0,            [10, 100]],
+            [       20,   0.333,            0,            [10, 100]],
+            [       30,   0.333,            0,              [5, 30]],
+           ];

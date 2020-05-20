@@ -28,7 +28,7 @@ class Projectile():
         self.trail = trail;
         self.trailTick = 0.1;
         self.bounceNum = bounceNum;
-        self.size = tables.projectileData[ID][6];
+        self.size = tables.projectileData[ID][5];
         self.rect = Rect(self.position[0] - self.size * 0.5, self.position[1] - self.size * 0.5, self.size, self.size);
         self.life = int(maxLife);
         self.GRAVITY = GRAVITY;
@@ -42,9 +42,11 @@ class Projectile():
         else:
             self.life -= commons.DELTA_TIME;
 
-        dragFactor = 1.0 - commons.DELTA_TIME;
+        dragFactor = 1 + self.DRAG * commons.DELTA_TIME;
+        self.velocity = (self.velocity[0] / dragFactor, self.velocity[1] / dragFactor + commons.GRAVITY * self.GRAVITY * commons.DELTA_TIME);
+        #dragFactor = 1.0 - commons.DELTA_TIME * self.DRAG;
+        #self.velocity = (self.velocity[0] * dragFactor, self.velocity[1] * dragFactor + commons.GRAVITY * self.GRAVITY * commons.DELTA_TIME);
 
-        self.velocity = (self.velocity[0] * dragFactor, self.velocity[1] * dragFactor + commons.GRAVITY * self.GRAVITY * commons.DELTA_TIME);
         self.position = (self.position[0] + self.velocity[0] * commons.DELTA_TIME * commons.BLOCKSIZE, self.position[1] + self.velocity[1] * commons.DELTA_TIME * commons.BLOCKSIZE);
         self.rect.left = self.position[0] - self.size * 0.5; #updating rect
         self.rect.top = self.position[1] - self.size * 0.5;
@@ -117,14 +119,15 @@ class Projectile():
                         sound_manager.sounds[18].play();
                     else:
                         sound_manager.sounds[random.randint(3, 5)].play();
-                return
+                return;
+
         for enemy in entity_manager.enemies:
             if enemy.rect.colliderect(self.rect):
                 if enemy.position[0] > entity_manager.clientPlayer.position[0]:
                     direction = 1;
                 else:
                     direction = -1;
-                enemy.Damage(self.damage, crit = self.crit, knockBack = self.knockback, direction = direction);
+                enemy.Damage(self.damage, ["projectile", "Player"], crit = self.crit, knockBack = self.knockback, direction = direction, sourceVelocity = self.velocity);
                 entity_manager.projectiles.remove(self);
                 return;
 

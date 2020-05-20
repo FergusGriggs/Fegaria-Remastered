@@ -2,7 +2,7 @@
 __author__ = "Fergus Griggs";
 __email__ = "fbob987 at gmail dot com";
 
-import pygame, random, pickle, datetime, perlin;
+import pygame, random, pickle, datetime, perlin, math;
 from pygame.locals import *;
 
 import commons;
@@ -12,10 +12,12 @@ import entity_manager;
 import shared_methods;
 import sound_manager;
 
+from item import Item;
+
 def Initialize():
-    global MAP_SIZE_X, MAP_SIZE_Y, mapData, tileMaskData, wallTileMaskData, clientWorld;
-    MAP_SIZE_X = 0;
-    MAP_SIZE_Y = 0;
+    global WORLD_SIZE_X, WORLD_SIZE_Y, mapData, tileMaskData, wallTileMaskData, clientWorld;
+    WORLD_SIZE_X = 0;
+    WORLD_SIZE_Y = 0;
 
     mapData = [];
     tileMaskData = [];
@@ -35,6 +37,10 @@ def Initialize():
     global NOISE, NOISE_OFFSETS;
     NOISE = perlin.SimplexNoise(); #create NOISE object
     NOISE_OFFSETS = [random.random() * 1000, random.random() * 1000, random.random() * 1000]; #randomly generate offsets
+
+    global GRASS_GROW_TICK, GRASS_GROW_DELAY;
+    GRASS_GROW_DELAY = 7.5;
+    GRASS_GROW_TICK = GRASS_GROW_DELAY;
 
 class World():
     def __init__(self, name, creationDate,  size):
@@ -101,6 +107,8 @@ def CheckTileMerge(ID1, ID2):
     elif ID1 == 1: 
         if ID2 == 0: return True;
         elif ID2 == 2: return True;
+        elif ID2 == 4: return True;
+        elif ID2 == 8: return True;
     elif ID1 == 2: 
         if ID2 == 0: return True;
         elif ID2 == 1: return True;
@@ -113,6 +121,7 @@ def CheckTileMerge(ID1, ID2):
         if ID2 == 2: return True;
     elif ID1 == 4: 
         if ID2 == 0: return True;
+        elif ID2 == 1: return True;
         elif ID2 == 2: return True;
         elif ID2 == 8: return True;
         elif ID2 == 13: return True;
@@ -121,6 +130,7 @@ def CheckTileMerge(ID1, ID2):
         if ID2 == 10: return True;
     elif ID1 == 8: 
         if ID2 == 0: return True;
+        elif ID2 == 1: return True;
         elif ID2 == 2: return True;
         elif ID2 == 4: return True;
         elif ID2 == 9: return True;
@@ -146,8 +156,8 @@ def CheckTileMerge(ID1, ID2):
 def TileInMapRange(i, j, width = 1):
    if i < -1 + width: return False;
    if j < -1 + width: return False;
-   if i > MAP_SIZE_X - width: return False;
-   if j > MAP_SIZE_Y - width: return False;
+   if i > WORLD_SIZE_X - width: return False;
+   if j > WORLD_SIZE_Y - width: return False;
    return True;
 
 # Returns the mask type given an array of the surrounding blocks
@@ -214,13 +224,13 @@ def GetWallMaskIndexFromPos(i, j, ID):
     if i > 0:
         if not CheckTileMerge(mapData[i - 1][j][1], ID):
             sameBlocks[2] = 0;
-    if i < MAP_SIZE_X - 1:
+    if i < WORLD_SIZE_X - 1:
         if not CheckTileMerge(mapData[i + 1][j][1], ID):
             sameBlocks[0] = 0;
     if j > 0:
         if not CheckTileMerge(mapData[i][j - 1][1], ID):
             sameBlocks[3] = 0;
-    if j < MAP_SIZE_Y - 1:
+    if j < WORLD_SIZE_Y - 1:
         if not CheckTileMerge(mapData[i][j + 1][1], ID):
             sameBlocks[1] = 0;
     return GetMaskIndex(GetMaskNameFromSurroundingBlocks(sameBlocks));
@@ -232,13 +242,13 @@ def GetMaskIndexFromPos(i, j, ID):
     if i > 0:
         if not CheckTileMerge(mapData[i - 1][j][0], ID):
             sameBlocks[2] = 0;
-    if i < MAP_SIZE_X - 1:
+    if i < WORLD_SIZE_X - 1:
         if not CheckTileMerge(mapData[i + 1][j][0],ID):
             sameBlocks[0] = 0;
     if j > 0:
         if not CheckTileMerge(mapData[i][j - 1][0],ID):
             sameBlocks[3] = 0;
-    if j < MAP_SIZE_Y - 1:
+    if j < WORLD_SIZE_Y - 1:
         if not CheckTileMerge(mapData[i][j + 1][0], ID):
             sameBlocks[1] = 0;
     return GetMaskIndex(GetMaskNameFromSurroundingBlocks(sameBlocks));
@@ -255,25 +265,25 @@ def BlitGenerationStage(string):
 # Initializes all structures related to terrain and generates a map of thive given size using the given generation type
 def GenerateTerrain(genType, blitProgress = False):
     global mapData, tileMaskData, wallTileMaskData, clientWorld;
-    BIOMEBOARDER_X1 = MAP_SIZE_X * 0.333333;
-    BIOMEBOARDER_X2 = MAP_SIZE_X * 0.666666;
+    BIOMEBOARDER_X1 = WORLD_SIZE_X * 0.333333;
+    BIOMEBOARDER_X2 = WORLD_SIZE_X * 0.666666;
     BORDER_WEST = int(commons.BLOCKSIZE);
-    BORDER_EAST = int(MAP_SIZE_X * commons.BLOCKSIZE - commons.BLOCKSIZE);
+    BORDER_EAST = int(WORLD_SIZE_X * commons.BLOCKSIZE - commons.BLOCKSIZE);
     BORDER_NORTH = int(commons.BLOCKSIZE * 1.5);
-    BORDER_SOUTH = int(MAP_SIZE_Y * commons.BLOCKSIZE - commons.BLOCKSIZE * 1.5);
+    BORDER_SOUTH = int(WORLD_SIZE_Y * commons.BLOCKSIZE - commons.BLOCKSIZE * 1.5);
 
-    mapData = [[-1 for i in range(MAP_SIZE_Y)] for i in range(MAP_SIZE_X)];
-    tileMaskData = [[-1 for i in range(MAP_SIZE_Y)] for i in range(MAP_SIZE_X)];
-    wallTileMaskData = [[-1 for i in range(MAP_SIZE_Y)] for i in range(MAP_SIZE_X)];
+    mapData = [[-1 for i in range(WORLD_SIZE_Y)] for i in range(WORLD_SIZE_X)];
+    tileMaskData = [[-1 for i in range(WORLD_SIZE_Y)] for i in range(WORLD_SIZE_X)];
+    wallTileMaskData = [[-1 for i in range(WORLD_SIZE_Y)] for i in range(WORLD_SIZE_X)];
     date = datetime.datetime.now();
     clientWorld = World(WORLD_NAME, str(str(date)[:19]), genType);
 
     if genType == "ice caves":
-        mapData = [[[-1, 0] for i in range(MAP_SIZE_X)] for j in range(MAP_SIZE_Y)];
+        mapData = [[[-1, 0] for i in range(WORLD_SIZE_X)] for j in range(WORLD_SIZE_Y)];
         backgroundID = 0;
 
-        for i in range(MAP_SIZE_X):
-            for j in range(MAP_SIZE_Y):
+        for i in range(WORLD_SIZE_X):
+            for j in range(WORLD_SIZE_Y):
 
                 val = NOISE.noise2(i / 15 + NOISE_OFFSETS[0], j / 15 + NOISE_OFFSETS[0]);
                 if val > -0.2:
@@ -287,13 +297,13 @@ def GenerateTerrain(genType, blitProgress = False):
 
     elif genType == "DEFAULT":
         print("genType: " + genType);
-        print("Worldsize: " + str(MAP_SIZE_X * MAP_SIZE_Y) + " blocks. (" + str(MAP_SIZE_X) + "x" + str(MAP_SIZE_Y) + ")\n");
+        print("Worldsize: " + str(WORLD_SIZE_X * WORLD_SIZE_Y) + " blocks. (" + str(WORLD_SIZE_X) + "x" + str(WORLD_SIZE_Y) + ")\n");
 
-        for i in range(MAP_SIZE_X):
+        for i in range(WORLD_SIZE_X):
             if blitProgress:
-                BlitGenerationStage("Generating Terrain: " + str(round((i / MAP_SIZE_X) * 100, 1)) + "%");
+                BlitGenerationStage("Generating Terrain: " + str(round((i / WORLD_SIZE_X) * 100, 1)) + "%");
 
-            for j in range(MAP_SIZE_Y):
+            for j in range(WORLD_SIZE_Y):
                 if i < BIOMEBOARDER_X1 + random.randint(-5, 5):
                     biome = 1;
                 elif i < BIOMEBOARDER_X2 + random.randint(-5, 5):
@@ -379,25 +389,45 @@ def GenerateTerrain(genType, blitProgress = False):
         if blitProgress:
             BlitGenerationStage("Spawning ores");
         
-        for i in range(int(MAP_SIZE_X * MAP_SIZE_Y / 1200)):
-            CreateVein(random.randint(0, MAP_SIZE_X - 1), random.randint(70, 500), 7, random.randint(2, 4));
+        for i in range(int(WORLD_SIZE_X * WORLD_SIZE_Y / 1200)):
+            CreateVein(random.randint(0, WORLD_SIZE_X - 1), random.randint(70, 500), 7, random.randint(2, 4));
         
-        for i in range(int(MAP_SIZE_X * MAP_SIZE_Y / 1200)):
-            CreateVein(random.randint(0, MAP_SIZE_X - 1), random.randint(70, 500), 6, random.randint(2, 4));
+        for i in range(int(WORLD_SIZE_X * WORLD_SIZE_Y / 1200)):
+            CreateVein(random.randint(0, WORLD_SIZE_X - 1), random.randint(70, 500), 6, random.randint(2, 4));
         
+        if blitProgress:
+            BlitGenerationStage("Generating Structures");
+
+        minePositions = [];
+
+        for i in range(math.ceil(WORLD_SIZE_X / 250)):
+            while 1:
+                newPosition = random.randint(20, WORLD_SIZE_X - 20);
+
+                canPlace = True;
+
+                for j in range(len(minePositions)):
+                    if abs(newPosition - minePositions[j]) < 30: 
+                        canPlace = False;
+
+                if canPlace:
+                    CreateMineShaft(newPosition);
+                    minePositions.append(newPosition);
+                    break;
+
         if blitProgress:
             BlitGenerationStage("Growing Trees");
         
-        for i in range(int(MAP_SIZE_X / 5)):
+        for i in range(1, int(WORLD_SIZE_X / 5)):
             if random.randint(1, 2) == 1:
                 CreateTree(i * 5, 0, random.randint(5, 15));
 
     elif genType == "superflat":
         mapData = [];
         backgroundID = 3;
-        for i in range(MAP_SIZE_X):
+        for i in range(WORLD_SIZE_X):
             mapData.append([]);
-            for j in range(MAP_SIZE_Y):
+            for j in range(WORLD_SIZE_Y):
                 if j > 100:
                     tileValue = 1;
                     wallValue = 1;
@@ -414,11 +444,11 @@ def GenerateTerrain(genType, blitProgress = False):
 def CreateTerrainSurface(): 
     global terrainSurface;
     print("Creating Terrain Surface...");
-    terrainSurface = pygame.Surface((MAP_SIZE_X * commons.BLOCKSIZE, MAP_SIZE_Y * commons.BLOCKSIZE));
+    terrainSurface = pygame.Surface((WORLD_SIZE_X * commons.BLOCKSIZE, WORLD_SIZE_Y * commons.BLOCKSIZE));
     terrainSurface.fill((255, 0, 255));
     terrainSurface.set_colorkey((255, 0, 255));
-    for i in range(MAP_SIZE_X):
-        for j in range(MAP_SIZE_Y):
+    for i in range(WORLD_SIZE_X):
+        for j in range(WORLD_SIZE_Y):
             UpdateTerrainSurface(i, j, affectOthers = False);
 
 def DestroySpecialTile(i, j):
@@ -442,7 +472,7 @@ def DestroySpecialTile(i, j):
         for dat in data[1]:
             mapData[i + dat[0]][j + dat[1]][0] = -1;
             UpdateTerrainSurface(i + dat[0], j + dat[1]);
-        entity_manager.SpawnPhysicsItem((i * commons.BLOCKSIZE, j * commons.BLOCKSIZE), data[4], 0, pickupDelay = 10);
+        entity_manager.SpawnPhysicsItem(Item(data[4], 1), (i * commons.BLOCKSIZE, j * commons.BLOCKSIZE), pickupDelay = 10);
 
 
 def UseSpecialTile(i, j):
@@ -510,11 +540,11 @@ def UpdateTerrainSurface(i, j, affectOthers = True):
     if affectOthers:
         if i > 0:
             tilesToUpdate.append((i - 1, j));
-        if i < MAP_SIZE_X - 1:
+        if i < WORLD_SIZE_X - 1:
             tilesToUpdate.append((i + 1, j));
         if j > 0:
             tilesToUpdate.append((i, j - 1));
-        if j < MAP_SIZE_Y - 1:
+        if j < WORLD_SIZE_Y - 1:
             tilesToUpdate.append((i, j + 1));
     tilesToUpdate.append((i, j));
 
@@ -574,7 +604,7 @@ def CreateVein(i, j, tileID, size):
 def CreateTree(i, j, height):
     global mapData;
     grounded = False;
-    for k in range(MAP_SIZE_Y - j - 1):
+    for k in range(WORLD_SIZE_Y - j - 1):
         val = mapData[i][j + 1][0];
         if val == 5 or val == 2:
             block1 = 10;
@@ -614,6 +644,53 @@ def CreateTree(i, j, height):
     mapData[i - 1][j + 1][0] = int(block2);
     mapData[i + 1][j + 1][0] = int(block2);
 
+def CreateMineShaft(positionX):
+    for j in range(WORLD_SIZE_Y - 1):
+        if mapData[positionX][j][0] != -1:
+            # Spawn hut at the top
+            SpawnStructure(positionX, j, 0);
+
+            mineLength = random.randint(7, 30)
+
+            for i in range(1, mineLength):
+                if i == mineLength - 1:
+                    SpawnStructure(positionX, j + i * 8, 4);
+                else:
+                    if random.random() < 0.2 and i > 5:
+                        if random.random() < 0.5:
+                            SpawnStructure(positionX, j + i * 8, 2);
+                            SpawnStructure(positionX - 3, j + i * 8 - 2, 5);
+                        else:
+                            SpawnStructure(positionX, j + i * 8, 3);
+                            SpawnStructure(positionX + 3, j + i * 8 - 2, 6);
+                    else:
+                        SpawnStructure(positionX, j + i * 8, 1);
+            break;
+            
+def SpawnStructure(positionX, positionY, structureID):
+    global mapData;
+
+    spawnPosX = positionX + tables.structureTiles[structureID][0][0];
+    spawnPosY = positionY + tables.structureTiles[structureID][0][1];
+
+    sizeY = len(tables.structureTiles[structureID][1]);
+    sizeX = len(tables.structureTiles[structureID][1][0]);
+
+    for i in range(sizeX):
+        for j in range(sizeY):
+            tileValue = tables.structureTiles[structureID][1][j][i][0];
+            wallValue = tables.structureTiles[structureID][1][j][i][1];
+
+            if tileValue > -2:
+                mapData[spawnPosX + i][spawnPosY + j][0] = tileValue;
+
+            if wallValue > -2:
+                mapData[spawnPosX + i][spawnPosY + j][1] = wallValue;
+
+            if tileValue == -3:
+                SpawnLootChest(spawnPosX + i, spawnPosY + j);
+
+
 #creates and grounds spawn point
 def CreateGroundedSpawnPosition():
     global clientWorld;
@@ -627,3 +704,92 @@ def CreateGroundedSpawnPosition():
         if mapData[x1][y1][0] not in tables.uncollidableBlocks or mapData[x2][y2][0] not in tables.uncollidableBlocks:
             clientWorld.spawnPosition = (clientWorld.spawnPosition[0], clientWorld.spawnPosition[1] - commons.BLOCKSIZE * 1.5);
             break;
+
+def SpawnLootChest(topLeftX, topLeftY, numSpecialItems = 1, numMiscItems = 2):
+    # Place chest tiles
+    mapData[topLeftX][topLeftY][0] = 255;
+    mapData[topLeftX + 1][topLeftY][0] = 256;
+    mapData[topLeftX][topLeftY + 1][0] = 265;
+    mapData[topLeftX + 1][topLeftY + 1][0] = 266;
+
+    # Initialize chest data
+    clientWorld.chestData.append([(topLeftX, topLeftY), [[None for j in range(4)] for i in range(5)]]);
+
+    # Add items to chest
+
+    currentSlot = 0;
+    
+    spawnedItemIDS = [];
+
+    # Special items
+    for i in range(numSpecialItems):
+        while 1:
+            # Get random special item index
+            selectedItem = random.randint(0, len(tables.specialLoot) - 1);
+
+            # Check it hasn't already been spawned in this chest
+            if tables.specialLoot[selectedItem][0] not in spawnedItemIDS:
+                
+                # Check if deep enough to spawn item
+                if topLeftY >= tables.specialLoot[selectedItem][2]:
+
+                    # Spawn chance
+                    if random.random() <= tables.specialLoot[selectedItem][1]:
+                        itemCount = random.randint(tables.specialLoot[selectedItem][3][0], tables.specialLoot[selectedItem][3][1]);
+                        clientWorld.chestData[-1][1][currentSlot % 5][currentSlot // 5] = Item(tables.specialLoot[selectedItem][0], itemCount);
+
+                        # Add it to the list so it is not added multiple times in one chest
+                        spawnedItemIDS.append(tables.specialLoot[selectedItem][0]);
+                        currentSlot += 1;
+                        break;
+
+    # Misc items
+    for i in range(numMiscItems):
+        while 1:
+            # Get random special item index
+            selectedItem = random.randint(0, len(tables.miscLoot) - 1);
+
+            # Check it hasn't already been spawned in this chest
+            if tables.miscLoot[selectedItem][0] not in spawnedItemIDS:
+
+                # Check if deep enough to spawn item
+                if topLeftY >= tables.miscLoot[selectedItem][2]:
+
+                    # Spawn chance
+                    if random.random() <= tables.miscLoot[selectedItem][1]:
+                        itemCount = random.randint(tables.miscLoot[selectedItem][3][0], tables.miscLoot[selectedItem][3][1]);
+                        clientWorld.chestData[-1][1][currentSlot % 5][currentSlot // 5] = Item(tables.miscLoot[selectedItem][0], itemCount);
+
+                        # Add it to the list so it is not added multiple times in one chest
+                        spawnedItemIDS.append(tables.miscLoot[selectedItem][0]);
+                        currentSlot += 1;
+                        break;
+
+    # Coins
+    clientWorld.chestData[-1][1][currentSlot % 5][currentSlot // 5] = Item(23, random.randint(1, 3));
+    currentSlot += 1;
+
+    clientWorld.chestData[-1][1][currentSlot % 5][currentSlot // 5] = Item(22, random.randint(25, 95));
+    currentSlot += 1;
+
+    clientWorld.chestData[-1][1][currentSlot % 5][currentSlot // 5] = Item(21, random.randint(25, 95));
+    currentSlot += 1;
+
+def CheckGrowGrass():
+    global GRASS_GROW_TICK;
+    if GRASS_GROW_TICK <= 0:
+        GRASS_GROW_TICK += GRASS_GROW_DELAY;
+        GrowGrass();
+            
+    else:
+        GRASS_GROW_TICK -= commons.DELTA_TIME;
+
+def GrowGrass():
+    for i in range(int(WORLD_SIZE_X * 0.1)):
+        randomX = random.randint(0, WORLD_SIZE_X - 1);
+        for j in range(110):
+            if mapData[randomX][j][0] != -1:
+                if mapData[randomX][j][0] == 0:
+                    mapData[randomX][j][0] = 5;
+                    UpdateTerrainSurface(randomX, j);
+                break;

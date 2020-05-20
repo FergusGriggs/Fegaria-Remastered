@@ -30,7 +30,7 @@ class Particle():
     def Update(self):
         dragFactor = 1.0 - commons.DELTA_TIME * 2;
 
-        self.velocity = (self.velocity[0] * dragFactor, self.velocity[1] * dragFactor + self.GRAV * commons.DELTA_TIME);
+        self.velocity = (self.velocity[0] * dragFactor, self.velocity[1] * dragFactor + self.GRAV * commons.GRAVITY * commons.DELTA_TIME);
         self.position = (self.position[0] + self.velocity[0] * commons.DELTA_TIME * commons.BLOCKSIZE, self.position[1] + self.velocity[1] * commons.DELTA_TIME * commons.BLOCKSIZE);
 
         self.life -= commons.DELTA_TIME; #change life

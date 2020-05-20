@@ -101,6 +101,7 @@ class Prompt():
                 commons.GAME_SUB_STATE = "MAIN";
                 world.terrainSurface = pygame.Surface((1, 1));
                 menu_manager.UpdateActiveMenuButtons();
+                entity_manager.KillAllEntities();
                 self.close = True;
 
     def Draw(self):

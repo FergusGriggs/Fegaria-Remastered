@@ -91,6 +91,9 @@ class Player():
         self.alive = True;
         self.respawnTick = 0;
 
+        self.invincibleTimer = 2.0;
+        self.invincible = True;
+
         if HP == 0:
             self.HP = maxHP;
         else:
@@ -117,7 +120,8 @@ class Player():
 
         self.direction = 1;
 
-        self.armSwing = False;
+        self.swingingArm = False;
+        self.shouldSwingArm = False;
         
         self.lastBlockOn = 0;
 
@@ -126,8 +130,8 @@ class Player():
 
         self.useTick = 0;
         self.canUse = False;
-        self.armHold = False;
-        self.holdAngle = 0;
+        self.armOut = False;
+        self.armOutAngle = 0;
         self.swingAngle = 0;
         self.itemSwing = False;
         self.currentItemImage = None;
@@ -160,18 +164,24 @@ class Player():
 
     def Update(self):
         if self.alive:
+            if self.invincible:
+                if self.invincibleTimer <= 0.0:
+                    self.invincible = False;
+                else:
+                    self.invincibleTimer -= commons.DELTA_TIME;
+        
             if self.movingLeft:#moves player left
                 if not self.stopLeft:
                     if self.movingDown:
                         self.velocity = (-5, self.velocity[1]);
                     else:
-                        self.velocity = (-15, self.velocity[1]);
+                        self.velocity = (-12, self.velocity[1]);
             if self.movingRight:#moves player right
                 if not self.stopRight:
                     if self.movingDown:
                         self.velocity = (5, self.velocity[1]);
                     else:
-                        self.velocity = (15, self.velocity[1]);
+                        self.velocity = (12, self.velocity[1]);
 
             dragFactor = 1.0 - commons.DELTA_TIME;
 
@@ -192,7 +202,7 @@ class Player():
             
             if not self.canUse:
                 if self.useTick <= 0:
-                    self.armHold = False;
+                    self.armOut = False;
                     self.canUse = True;
                 else:
                     self.useTick -= commons.DELTA_TIME;
@@ -228,7 +238,7 @@ class Player():
                     if pygame.mouse.get_pressed()[0]:
                         self.UseItem();
                     elif pygame.mouse.get_pressed()[2]:
-                        self.UseItem(alt = True);
+                        self.UseItem(rightClick = True);
 
             collide = False;
 
@@ -250,6 +260,9 @@ class Player():
                                     if blockrect.colliderect(int(self.rect.right + 1), int(self.rect.top + 2), 1, int(self.rect.height - 4)):
                                         self.stopRight = True; #is there a solid block right        
                                 if blockrect.colliderect(self.rect):
+                                    if val == 258:
+                                        self.Damage(5, ["spike", "World"]);
+
                                     deltaX = self.position[0] - blockrect.centerx;
                                     deltaY = self.position[1] - blockrect.centery;
                                     if abs(deltaX) > abs(deltaY):
@@ -286,7 +299,7 @@ class Player():
                                                         if not fallDamaged:
                                                             if self.velocity[1] > 58:
                                                                 damage = int((self.velocity[1] - 57) ** 2); #work out fall damage
-                                                                self.Damage(damage, ["falling","World"]); #apply fall damage once
+                                                                self.Damage(damage, ["falling", "World"]); #apply fall damage once
                                                                 fallDamaged = True;
                                                         self.lastBlockOn = int(val);
                                                         self.movingDownTick = -1;
@@ -318,8 +331,11 @@ class Player():
 
         self.UpdateInventoryOldSlots();
 
-    def Damage(self, value, source, knockBack = 0, direction = None):
-        if not commons.CREATIVE and self.alive:
+    def Damage(self, value, source, knockBack = 0, direction = None, sourceVelocity = None):
+        if not commons.CREATIVE and self.alive and not self.invincible:
+            self.invincible = True;
+            self.invincibleTimer = 0.35;
+
             value -= self.defense;
             value += random.randint(-1, 1);
             if value < 1:
@@ -330,35 +346,51 @@ class Player():
 
             if self.HP < 0:
                 self.HP = 0;
-            if knockBack != 0:
-                valx = knockBack*(1-self.knockBackResist);
-                valy = -3 * (1 - self.knockBackResist);
-                self.velocity = (direction * valx, valy);
+
             if self.HP > 0: #check if the player has died from damage
                 if commons.SOUND:
                     sound_manager.sounds[random.randint(7, 9)].play(); #random hurt sound
+
                 if commons.PARTICLES:
-                    velocityAngle = math.atan2(self.velocity[1], self.velocity[0]);
-                    velocityMagnitude = math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2);
+                    velocityAngle = 0;
+                    velocityMagnitude = 0;
+
+                    if sourceVelocity != None:
+                        velocityAngle = math.atan2(self.velocity[1] + sourceVelocity[0], self.velocity[0] + sourceVelocity[1]);
+                        velocityMagnitude = math.sqrt((self.velocity[0] + sourceVelocity[0]) ** 2 + (self.velocity[1] + sourceVelocity[1]) ** 2);
+                    else:
+                        velocityAngle = math.atan2(self.velocity[1], self.velocity[0]);
+                        velocityMagnitude = math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2);
+
                     for i in range(int(10 * commons.PARTICLEDENSITY)): #blood
-                        entity_manager.SpawnParticle((self.position[0] + random.random() * commons.PLAYER_WIDTH - commons.PLAYER_WIDTH * 0.5, self.position[1] + random.random() * commons.PLAYER_HEIGHT- commons.PLAYER_HEIGHT * 0.5), (230, 0, 0), life = 1, angle = velocityAngle, size = 10, spread = math.pi * 0.2, magnitude = random.random() * velocityMagnitude);
+                        particlePos = (self.position[0] + random.random() * commons.PLAYER_WIDTH - commons.PLAYER_WIDTH * 0.5, self.position[1] + random.random() * commons.PLAYER_HEIGHT- commons.PLAYER_HEIGHT * 0.5);
+                        entity_manager.SpawnParticle(particlePos, (230, 0, 0), life = 1, size = 10, angle = velocityAngle, spread = math.pi * 0.2, magnitude = random.random() * velocityMagnitude, GRAV = 0.15);
             else:
-                self.Kill(source);
+                self.Kill(source, sourceVelocity);
+
+            if knockBack != 0:
+                remainingKnockback = max(0, knockBack - self.knockBackResist);
+                self.velocity = (self.velocity[0] + direction * remainingKnockback, remainingKnockback * -1.5);
+
         hpFloat = self.HP / self.maxHP;
         self.hpText = shared_methods.OutlineText(str(self.HP), ((1 - hpFloat) * 255, hpFloat * 255, 0), commons.DEFAULTFONT, outlineColour = ((1 - hpFloat) * 180, hpFloat * 180, 0));
         self.hpXposition = commons.WINDOW_WIDTH - 10 - hpFloat * 100 - self.hpText.get_width() * 0.5;
             
-    def Kill(self, source):
+    def Kill(self, source, sourceVelocity = None):
         if self.alive:
             entity_manager.AddMessage(GetDeathMessage(self.name, source), (255, 255, 255));
             self.respawnTick = 5.0; #respawn delay
             self.alive = False;
             self.positionDiff = (0, 0);
             if commons.PARTICLES:
+                if sourceVelocity != None:
+                    self.velocity = (self.velocity[0] + sourceVelocity[0], self.velocity[1] + sourceVelocity[1]);
+
                 velocityAngle = math.atan2(self.velocity[1], self.velocity[0]);
                 velocityMagnitude = math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2);
+
                 for i in range(int(35 * commons.PARTICLEDENSITY)): #more blood
-                    entity_manager.SpawnParticle((self.position[0] + random.random() * commons.PLAYER_WIDTH - commons.PLAYER_WIDTH * 0.5, self.position[1] + random.random() * commons.PLAYER_HEIGHT- commons.PLAYER_HEIGHT * 0.5), (230, 0, 0), life = 1, angle = velocityAngle, size = 10, spread = 0.9, magnitude = random.random() * velocityMagnitude * 0.8);
+                    entity_manager.SpawnParticle((self.position[0] + random.random() * commons.PLAYER_WIDTH - commons.PLAYER_WIDTH * 0.5, self.position[1] + random.random() * commons.PLAYER_HEIGHT- commons.PLAYER_HEIGHT * 0.5), (230, 0, 0), life = 1, angle = velocityAngle, size = 10, spread = 0.9, magnitude = random.random() * velocityMagnitude * 0.8, GRAV = 0.15);
             if commons.SOUND:
                 sound_manager.sounds[11].play(); #death sound
             self.velocity = (0, 0);
@@ -413,7 +445,7 @@ class Player():
         if self.armAnimationTick <= 0:
             self.armAnimationTick += self.armAnimationSpeed;
 
-            if self.armSwing:
+            if self.swingingArm:
                 if self.direction == 1:
                     if self.armAnimationFrame < 3:
                         self.armAnimationFrame += 1;
@@ -422,7 +454,7 @@ class Player():
                             self.armAnimationFrame = 6;
                         else:
                             self.armAnimationFrame = 26;
-                        self.armSwing = False;
+                        self.swingingArm = False;
                 else:
                     if self.armAnimationFrame < 23 and self.armAnimationFrame >= 20:
                         self.armAnimationFrame += 1;
@@ -431,7 +463,7 @@ class Player():
                             self.armAnimationFrame = 6;
                         else:
                             self.armAnimationFrame = 26;
-                        self.armSwing = False;
+                        self.swingingArm = False;
             else:
                 if self.grounded:
                     if self.movingLeft: #if moving left, cycle through left frames
@@ -459,7 +491,7 @@ class Player():
         else:
             self.armAnimationTick -= commons.DELTA_TIME;
 
-        if self.armHold:
+        if self.armOut:
             if self.direction == 1:
                 self.armAnimationFrame = 19;
             else:
@@ -517,194 +549,228 @@ class Player():
                 armSprites.append(armSurf);
         return [sprites, armSprites];
                 
-    def UseItem(self, alt = False):
-        swing = False;
-        if not commons.IS_HOLDING_ITEM:
+    def UseItem(self, rightClick = False):
+        item = None;
+
+        if commons.IS_HOLDING_ITEM:
+            item = commons.ITEM_HOLDING;
+        elif not self.inventoryOpen:
             item = self.hotbar[self.hotbarIndex];
-        else:
-            item=commons.ITEM_HOLDING
-        screenpositionx = self.position[0] - entity_manager.cameraPosition[0] + commons.WINDOW_WIDTH * 0.5;
-        screenpositiony = self.position[1] - entity_manager.cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5;
-        if not alt:
-            if item != None:
-                if "block" in item.tags:
-                    if math.sqrt((screenpositionx - commons.MOUSE_POS[0]) ** 2 + (screenpositiony - commons.MOUSE_POS[1]) ** 2) < commons.BLOCKSIZE * 6 or commons.CREATIVE:
-                        blockPosition = commons.TILE_POSITION_MOUSE_HOVERING;
-                        if world.TileInMapRange(blockPosition[0], blockPosition[1]):
-                            blockrect = Rect(commons.BLOCKSIZE*blockPosition[0], commons.BLOCKSIZE*blockPosition[1]+1, commons.BLOCKSIZE, commons.BLOCKSIZE);
-                            if not blockrect.colliderect(self.rect):
-                                if "special" in item.tags:
-                                    canPlace = True;
-                                    relativeData = tables.itemData[item.ID][5];
-                                    for i in range(len(relativeData)):
-                                        if not world.mapData[blockPosition[0] + relativeData[i][1]][blockPosition[1] + relativeData[i][2]][0] == -1:
-                                            canPlace = False;
-                                    requiredSolids = tables.itemData[item.ID][6];
-                                    for i in range(len(requiredSolids)):
-                                        if world.mapData[blockPosition[0] + requiredSolids[i][0]][blockPosition[1] + requiredSolids[i][1]][0] in tables.uncollidableBlocks:
-                                            canPlace = False;
-                                    if canPlace:
-                                        for i in range(len(relativeData)):
-                                            world.mapData[blockPosition[0] + relativeData[i][1]][blockPosition[1] + relativeData[i][2]][0] =+ relativeData[i][0];
-                                            world.UpdateTerrainSurface(blockPosition[0] + relativeData[i][1], blockPosition[1] + relativeData[i][2]);
-                                        if not commons.IS_HOLDING_ITEM:
-                                            self.hotbar[self.hotbarIndex].amnt -= 1;
-                                            dat = ["H", self.hotbarIndex];
-                                            if dat not in self.oldInventoryPositions:
-                                                self.oldInventoryPositions.append(dat);
-                                            if self.hotbar[self.hotbarIndex].amnt <= 0:
-                                                self.hotbar[self.hotbarIndex] = None;
-                                        else:
-                                            commons.WAIT_TO_USE = True;
-                                            commons.ITEM_HOLDING.amnt -= 1;
-                                            if commons.ITEM_HOLDING.amnt <= 0:
-                                                commons.ITEM_HOLDING = None;
-                                                commons.IS_HOLDING_ITEM = False;
-                                        if "chest" in item.tags:
-                                            world.clientWorld.chestData.append([blockPosition, [[None for j in range(4)] for i in range(5)]]);
-                                        if commons.SOUND:
-                                            sound_manager.PlayHitSfx(item.ID);
-                                        swing = True;
 
-                                else:
-                                    if commons.SHIFT_ACTIVE:
-                                        if world.mapData[blockPosition[0]][blockPosition[1]][1] == -1:
-                                            if world.GetNeighborCount(blockPosition[0], blockPosition[1], tile = 1) > 0:
-                                                if not commons.CREATIVE:
-                                                    self.hotbar[self.hotbarIndex].amnt -= 1;
-                                                    dat = ["H", self.hotbarIndex];
-                                                    if dat not in self.oldInventoryPositions:
-                                                        self.oldInventoryPositions.append(dat);
-                                                    if self.hotbar[self.hotbarIndex].amnt <= 0:
-                                                        self.hotbar[self.hotbarIndex] = None;
-                                                tileID = tables.itemData[item.ID][5];
-                                                world.mapData[blockPosition[0]][blockPosition[1]][1] = tileID;
-                                                world.UpdateTerrainSurface(blockPosition[0], blockPosition[1]);
-                                                if commons.SOUND:
-                                                    sound_manager.PlayHitSfx(item.ID);
-                                                swing = True;
-                                    else:
-                                        if world.mapData[blockPosition[0]][blockPosition[1]][0] == -1:
-                                            if world.GetNeighborCount(blockPosition[0], blockPosition[1]) > 0:
-                                                if not commons.CREATIVE:
-                                                    if not commons.IS_HOLDING_ITEM:
-                                                        self.hotbar[self.hotbarIndex].amnt -= 1;
-                                                        dat = ["H", self.hotbarIndex];
-                                                        if dat not in self.oldInventoryPositions:
-                                                            self.oldInventoryPositions.append(dat);
-                                                        if self.hotbar[self.hotbarIndex].amnt <= 0:
-                                                            self.hotbar[self.hotbarIndex] = None;
-                                                    else:
-                                                        commons.WAIT_TO_USE = True;
-                                                        commons.ITEM_HOLDING.amnt -= 1;
-                                                        if commons.ITEM_HOLDING.amnt <= 0:
-                                                            commons.ITEM_HOLDING = None;
-                                                            commons.IS_HOLDING_ITEM = False;
-                                                world.mapData[blockPosition[0]][blockPosition[1]][0] = tables.itemData[item.ID][5];
-                                                world.UpdateTerrainSurface(blockPosition[0], blockPosition[1]);
-                                                if commons.SOUND:
-                                                    sound_manager.PlayHitSfx(item.ID);
-                                                swing = True;
+        if item == None:
+            return;
 
-                elif "pickaxe" in item.tags:
-                    if self.canUse or commons.CREATIVE:
-                        self.enemiesHit = [];
-                        self.canUse = False;
-                        self.useTick = int(item.attackSpeed) * 0.01;
-                        swing = True;
-                        self.itemSwing = True;
-                        if self.direction == 1:
-                            self.swingAngle = 10;
-                        else:
-                            self.swingAngle = 65;
-                        if commons.SOUND:
-                            sound_manager.sounds[15].play();
-                        if math.sqrt((screenpositionx - commons.MOUSE_POS[0]) ** 2 +(screenpositiony - commons.MOUSE_POS[1]) ** 2) < commons.BLOCKSIZE * 6 or commons.CREATIVE:
-                            if commons.SHIFT_ACTIVE:
-                                datIndex = 1; #wall or block being clicked
-                            else:
-                                datIndex = 0;
-                            blockPosition = commons.TILE_POSITION_MOUSE_HOVERING;
-                            if world.TileInMapRange(blockPosition[0], blockPosition[1]):
-                                tileID = world.mapData[blockPosition[0]][blockPosition[1]][datIndex];
-                                if tileID >= 255:
-                                    world.DestroySpecialTile(blockPosition[0], blockPosition[1]);
-                                    if commons.SOUND:
-                                        sound_manager.PlayHitSfx(0);
-                                else:
-                                    if tileID != -1:
-                                        itemID = tables.tileData[tileID][0];
-                                        # Remove Grass from dirt
-                                        if tileID == 5:
-                                            world.mapData[blockPosition[0]][blockPosition[1]][datIndex] = 0;
-                                        else:
-                                            world.mapData[blockPosition[0]][blockPosition[1]][datIndex] = -1;
-                                            
-                                            entity_manager.SpawnPhysicsItem(((blockPosition[0] + 0.5) * commons.BLOCKSIZE, (blockPosition[1] + 0.5) * commons.BLOCKSIZE), itemID, tables.itemData[itemID][3][7], pickupDelay = 10);
-                                        world.UpdateTerrainSurface(blockPosition[0], blockPosition[1]);
-                                        if tileID in tables.platformBlocks:  
-                                            colour = pygame.transform.average_color(surface_manager.tiles[tileID], Rect(commons.BLOCKSIZE / 8, commons.BLOCKSIZE / 8, commons.BLOCKSIZE * 3 / 4, commons.BLOCKSIZE / 4));
-                                        else:
-                                            colour = pygame.transform.average_color(surface_manager.tiles[tileID]);
-                                        
-                                        if commons.SOUND:
-                                            sound_manager.PlayHitSfx(tileID);
-                                        if commons.PARTICLES:
-                                            for i in range(int(random.randint(2, 3) * commons.PARTICLEDENSITY)):
-                                                entity_manager.SpawnParticle((blockPosition[0] * commons.BLOCKSIZE, blockPosition[1] * commons.BLOCKSIZE), colour, size = 10, life = 1, angle = -math.pi * 0.5, spread = math.pi, GRAV = 0.05);
-                elif "melee" in item.tags:
-                    if self.canUse:
-                        self.enemiesHit = [];
-                        self.canUse = False;
-                        self.useTick = int(item.attackSpeed) * 0.01;
-                        if commons.SOUND:
-                            sound_manager.sounds[15].play();
-                        swing = True;
-                        self.itemSwing = True;
-                        if self.direction == 1:
-                            self.swingAngle = 10;
-                        else:
-                            self.swingAngle = 65;
+        screenPositionX = self.position[0] - entity_manager.cameraPosition[0] + commons.WINDOW_WIDTH * 0.5;
+        screenPositionY = self.position[1] - entity_manager.cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5;
+
+        if not rightClick:
+            self.shouldSwingArm = False;
+
+            if "block" in item.tags:
+                self.PlaceBlock(screenPositionX, screenPositionY, item);
+
+            elif "pickaxe" in item.tags:
+                self.UsePickaxe(screenPositionX, screenPositionY, item);
+
+            elif "melee" in item.tags:
+                self.UseMeleeWeapon(item);
                         
-                if swing:
-                    if not self.armSwing:
-                        self.armSwing = True;
-                        if self.direction == 1:
-                            self.armAnimationFrame = 1;
-                        else:
-                            self.armAnimationFrame = 20;
-                elif "ranged" in item.tags:
-                    if self.canUse:
-                        if commons.MOUSE_POS[0] < screenpositionx:
-                            self.direction = 0;
-                        else:self.direction = 1;
-                        self.canUse = False;
-                        self.armHold = True;
-                        self.holdAngle = math.atan2(-commons.MOUSE_POS[1] + commons.WINDOW_HEIGHT * 0.5, abs(commons.MOUSE_POS[0] - commons.WINDOW_WIDTH * 0.5));
-                        self.useTick = int(item.attackSpeed) * 0.01;
-                        angle = math.atan2(commons.MOUSE_POS[1] - screenpositiony, commons.MOUSE_POS[0] - screenpositionx);
-                        weaponDamage = item.attackDamage;
-                        weaponKnockback = item.knockback;
-                        weaponvelocity = item.velocity;
-                        if "gun" in item.tags:
-                            ammoID = 1;
-                        elif "bow" in item.tags:
-                            ammoID = 0;
-                        source = self.name;
-                        crit = False;
-                        if random.random() < item.critStrikeChance:
-                            crit = True;
-                        entity_manager.SpawnProjectile(self.position, angle, weaponDamage, weaponKnockback, weaponvelocity, ammoID, source, crit);
+            if self.shouldSwingArm:
+                if not self.swingingArm:
+                    self.swingingArm = True;
+                    if self.direction == 1:
+                        self.armAnimationFrame = 1;
+                    else:
+                        self.armAnimationFrame = 20;
+
+            elif "ranged" in item.tags:
+                self.UseRangedWeapon(screenPositionX, screenPositionY, item);
+
         else:
-            if math.sqrt((screenpositionx - commons.MOUSE_POS[0]) ** 2 + (screenpositiony - commons.MOUSE_POS[1]) ** 2) < commons.BLOCKSIZE * 6 or commons.CREATIVE:
+            if math.sqrt((screenPositionX - commons.MOUSE_POS[0]) ** 2 + (screenPositionY - commons.MOUSE_POS[1]) ** 2) < commons.BLOCKSIZE * commons.PLAYER_REACH or commons.CREATIVE:
                 blockPosition = commons.TILE_POSITION_MOUSE_HOVERING;
                 val = world.mapData[blockPosition[0]][blockPosition[1]][0];
                 if val >= 255:
                     origin = tables.specialTileData[val - 255][0];
                     world.UseSpecialTile(blockPosition[0] + origin[0], blockPosition[1] + origin[1]);
                 
+    def PlaceBlock(self, screenPositionX, screenPositionY, block):
+        if math.sqrt((screenPositionX - commons.MOUSE_POS[0]) ** 2 + (screenPositionY - commons.MOUSE_POS[1]) ** 2) < commons.BLOCKSIZE * commons.PLAYER_REACH or commons.CREATIVE:
+            blockPosition = commons.TILE_POSITION_MOUSE_HOVERING;
+            if world.TileInMapRange(blockPosition[0], blockPosition[1]):
+
+                blockrect = Rect(commons.BLOCKSIZE * blockPosition[0], commons.BLOCKSIZE * blockPosition[1] + 1, commons.BLOCKSIZE, commons.BLOCKSIZE);
+                
+                if not blockrect.colliderect(self.rect):
+                    
+                    blockPlaced = False;
+
+                    if "multitile" in block.tags:
+                        canPlace = True;
+
+                        relativeData = tables.itemData[block.ID][5];
+
+                        for i in range(len(relativeData)):
+                            if not world.mapData[blockPosition[0] + relativeData[i][1]][blockPosition[1] + relativeData[i][2]][0] == -1:
+                                canPlace = False;
+
+                        requiredSolids = tables.itemData[block.ID][6];
+                        for i in range(len(requiredSolids)):
+                            if world.mapData[blockPosition[0] + requiredSolids[i][0]][blockPosition[1] + requiredSolids[i][1]][0] in tables.uncollidableBlocks:
+                                canPlace = False;
+
+                        if canPlace:
+                            for i in range(len(relativeData)):
+                                world.mapData[blockPosition[0] + relativeData[i][1]][blockPosition[1] + relativeData[i][2]][0] =+ relativeData[i][0];
+                                world.UpdateTerrainSurface(blockPosition[0] + relativeData[i][1], blockPosition[1] + relativeData[i][2]);
+
+                            blockPlaced = True;
+
+                            if "chest" in block.tags:
+                                world.clientWorld.chestData.append([blockPosition, [[None for j in range(4)] for i in range(5)]]);
+
+                            if commons.SOUND:
+                                sound_manager.PlayHitSfx(block.ID);
+
+                            self.shouldSwingArm = True;
+
+                    else:
+                        if commons.SHIFT_ACTIVE:
+                            if "nowall" not in block.tags:
+                                if world.mapData[blockPosition[0]][blockPosition[1]][1] == -1:
+                                    if world.GetNeighborCount(blockPosition[0], blockPosition[1], tile = 1) > 0:
+                                        tileID = tables.itemData[block.ID][5];
+                                        world.mapData[blockPosition[0]][blockPosition[1]][1] = tileID;
+                                        world.UpdateTerrainSurface(blockPosition[0], blockPosition[1]);
+                                        if commons.SOUND:
+                                            sound_manager.PlayHitSfx(block.ID);
+                                        self.shouldSwingArm = True;
+                                        blockPlaced = True;
+                        else:
+                            if world.mapData[blockPosition[0]][blockPosition[1]][0] == -1:
+                                if world.GetNeighborCount(blockPosition[0], blockPosition[1]) > 0:
+                                    world.mapData[blockPosition[0]][blockPosition[1]][0] = tables.itemData[block.ID][5];
+                                    world.UpdateTerrainSurface(blockPosition[0], blockPosition[1]);
+                                    if commons.SOUND:
+                                        sound_manager.PlayHitSfx(block.ID);
+                                    self.shouldSwingArm = True;
+                                    blockPlaced = True;
+                        
+                    if blockPlaced:
+                        if not commons.CREATIVE:
+                            if not commons.IS_HOLDING_ITEM:
+                                self.hotbar[self.hotbarIndex].amnt -= 1;
+                                dat = ["H", self.hotbarIndex];
+                                if dat not in self.oldInventoryPositions:
+                                    self.oldInventoryPositions.append(dat);
+                                if self.hotbar[self.hotbarIndex].amnt <= 0:
+                                    self.hotbar[self.hotbarIndex] = None;
+                            else:
+                                commons.WAIT_TO_USE = True;
+                                commons.ITEM_HOLDING.amnt -= 1;
+                                if commons.ITEM_HOLDING.amnt <= 0:
+                                    commons.ITEM_HOLDING = None;
+                                    commons.IS_HOLDING_ITEM = False;
+
+    def UsePickaxe(self, screenPositionX, screenPositionY, pickaxe):
+        if self.canUse or commons.CREATIVE:
+            self.enemiesHit = [];
+            self.canUse = False;
+            self.useTick = int(pickaxe.attackSpeed) * 0.01;
+            self.shouldSwingArm = True;
+            self.itemSwing = True;
+            if self.direction == 1:
+                self.swingAngle = 10;
+            else:
+                self.swingAngle = 65;
+            if commons.SOUND:
+                sound_manager.sounds[15].play();
+            if math.sqrt((screenPositionX - commons.MOUSE_POS[0]) ** 2 + (screenPositionY - commons.MOUSE_POS[1]) ** 2) < commons.BLOCKSIZE * commons.PLAYER_REACH or commons.CREATIVE:
+                if commons.SHIFT_ACTIVE:
+                    datIndex = 1; #wall or block being clicked
+                else:
+                    datIndex = 0;
+                blockPosition = commons.TILE_POSITION_MOUSE_HOVERING;
+                if world.TileInMapRange(blockPosition[0], blockPosition[1]):
+                    tileID = world.mapData[blockPosition[0]][blockPosition[1]][datIndex];
+                    if tileID >= 255:
+                        world.DestroySpecialTile(blockPosition[0], blockPosition[1]);
+                        if commons.SOUND:
+                            sound_manager.PlayHitSfx(0);
+                    else:
+                        if tileID != -1:
+                            itemID = tables.tileData[tileID][0];
+                            # Remove Grass from dirt
+                            if tileID == 5:
+                                world.mapData[blockPosition[0]][blockPosition[1]][datIndex] = 0;
+                            else:
+                                world.mapData[blockPosition[0]][blockPosition[1]][datIndex] = -1;
+                                            
+                                entity_manager.SpawnPhysicsItem(Item(itemID), ((blockPosition[0] + 0.5) * commons.BLOCKSIZE, (blockPosition[1] + 0.5) * commons.BLOCKSIZE), pickupDelay = 10);
+                            world.UpdateTerrainSurface(blockPosition[0], blockPosition[1]);
+                            if tileID in tables.platformBlocks:  
+                                colour = pygame.transform.average_color(surface_manager.tiles[tileID], Rect(commons.BLOCKSIZE / 8, commons.BLOCKSIZE / 8, commons.BLOCKSIZE * 3 / 4, commons.BLOCKSIZE / 4));
+                            else:
+                                colour = pygame.transform.average_color(surface_manager.tiles[tileID]);
+                                        
+                            if commons.SOUND:
+                                sound_manager.PlayHitSfx(tileID);
+                            if commons.PARTICLES:
+                                for i in range(int(random.randint(2, 3) * commons.PARTICLEDENSITY)):
+                                    entity_manager.SpawnParticle((blockPosition[0] * commons.BLOCKSIZE + commons.BLOCKSIZE * 0.5, blockPosition[1] * commons.BLOCKSIZE + commons.BLOCKSIZE * 0.5), colour, size = 13, life = 1, angle = -math.pi * 0.5, spread = math.pi, GRAV = 0.05);
+                
+    def UseMeleeWeapon(self, meleeWeapon):
+        if self.canUse:
+            self.enemiesHit = [];
+            self.canUse = False;
+            self.useTick = int(meleeWeapon.attackSpeed) * 0.01;
+
+            if commons.SOUND:
+                sound_manager.sounds[15].play();
+
+            self.shouldSwingArm = True;
+            self.itemSwing = True;
+            if self.direction == 1:
+                self.swingAngle = 10;
+            else:
+                self.swingAngle = 65;
+
+    def UseRangedWeapon(self, screenPositionX, screenPositionY, rangedWeapon):
+        if self.canUse:
+            if commons.MOUSE_POS[0] < screenPositionX:
+                self.direction = 0;
+            else:
+                self.direction = 1;
+
+            self.canUse = False;
+
+            self.armOut = True;
+            self.armOutAngle = math.atan2(screenPositionY - commons.MOUSE_POS[1], abs(screenPositionX - commons.MOUSE_POS[0]));
+
+            self.useTick = int(rangedWeapon.attackSpeed) * 0.01;
+
+            angle = math.atan2(commons.MOUSE_POS[1] - screenPositionY, commons.MOUSE_POS[0] - screenPositionX);
+
+            weaponDamage = rangedWeapon.attackDamage;
+            weaponKnockback = rangedWeapon.knockback;
+            weaponvelocity = rangedWeapon.velocity;
+
+            if "gun" in rangedWeapon.tags:
+                ammoID = 1;
+
+            elif "bow" in rangedWeapon.tags:
+                ammoID = 0;
+
+            source = self.name;
+            crit = False;
+
+            if random.random() <= rangedWeapon.critStrikeChance:
+                crit = True;
+
+            entity_manager.SpawnProjectile(self.position, angle, weaponDamage, weaponKnockback, weaponvelocity, ammoID, source, crit);
+
     def GiveItem(self, ID, amnt = 1, position = None, unique = False, item = None):
-        if position==None:
+        if position == None:
             coin = False;
             if ID >= 21 and ID <= 23:
                 coin = True;
@@ -734,7 +800,7 @@ class Player():
                                 self.inventory[searchData[0][0][1][0]][searchData[0][0][1][1]] = None;
                             self.GiveItem(ID + 1);
                             amnt = 0;
-                elif searchData[0][0][0]=="C": #if item in inventory increase the amnt by the calculated fillcount
+                elif searchData[0][0][0] == "C": #if item in inventory increase the amnt by the calculated fillcount
                     self.chestItems[searchData[0][0][1][0]][searchData[0][0][1][1]].amnt += fillCount;
                     if coin:
                         if self.chestItems[searchData[0][0][1][0]][searchData[0][0][1][1]].amnt == tables.itemData[ID][3][10]:
@@ -748,6 +814,7 @@ class Player():
                 if dat not in self.oldInventoryPositions:
                     self.oldInventoryPositions.append(dat); #flag the position for a surface update
                 searchData[0].remove(searchData[0][0]); #remove the used data
+            
             while len(searchData[1]) > 0 and amnt > 0: #no stacks left to fill so fill empty slots
                 fillCount = searchData[1][0][2]; #work out how many to add to the stack
                 amnt -= fillCount;
@@ -772,6 +839,7 @@ class Player():
                 if dat not in self.oldInventoryPositions:
                     self.oldInventoryPositions.append(dat); #flag the position for a surface update
                 searchData[1].remove(searchData[1][0]); #remove the used data
+            
             if amnt <= 0:
                 return [True];
             else:
@@ -823,7 +891,7 @@ class Player():
                 elif self.inventory[position[1][0]][position[1][1]].ID != ID:
                     item = self.inventory[position[1][0]][position[1][1]];
                     return [2, item, "I"];
-            elif position[0]=="C":
+            elif position[0] == "C":
                 if self.chestItems[position[1][0]][position[1][1]] == None:
                     if unique:
                         self.chestItems[position[1][0]][position[1][1]] = item;
@@ -943,7 +1011,7 @@ class Player():
                         self.chestImage.blit(shared_methods.OutlineText(str(self.chestItems[i][j].amnt), (255, 255, 255), commons.SMALLFONT), (24 + 48 * i, 30 + 48 * j));
 
     def UpdateCraftableItems(self):
-        self.craftableItems = [[i, 1] for i in range(31)];
+        self.craftableItems = [[i, 1] for i in range(32)];
 
     def RenderCraftableItemsSurf(self):
         self.craftableItemsSurf = pygame.Surface((48, len(self.craftableItems) * 48));
@@ -954,31 +1022,34 @@ class Player():
 
     def Draw(self): #draw player to screen
         if self.alive:
-            screenpositionx = self.position[0] - entity_manager.cameraPosition[0] + commons.WINDOW_WIDTH * 0.5;
-            screenpositiony = self.position[1] - entity_manager.cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5;
-            commons.screen.blit(self.sprites[self.animationFrame], (screenpositionx - 20, screenpositiony - 33));
-            img = self.currentItemImage.copy();
-            if self.armHold:
+            screenPositionX = self.position[0] - entity_manager.cameraPosition[0] + commons.WINDOW_WIDTH * 0.5;
+            screenPositionY = self.position[1] - entity_manager.cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5;
+            commons.screen.blit(self.sprites[self.animationFrame], (screenPositionX - 20, screenPositionY - 33));
+            
+            if self.armOut:
+                currentItemSurfaceCopy = self.currentItemImage.copy();
                 if not commons.IS_HOLDING_ITEM:
                     item = self.hotbar[self.hotbarIndex];
                 else:
                     item = commons.ITEM_HOLDING;
-                img = shared_methods.RotateSurface(surface_manager.items[item.ID].copy(), self.holdAngle * 180 / math.pi);
+                currentItemSurfaceCopy = shared_methods.RotateSurface(surface_manager.items[item.ID].copy(), self.armOutAngle * 180 / math.pi);
                 if self.direction == 1:
                     offsetx = 10;
                 else:
                     offsetx = -10;
-                    img = pygame.transform.flip(img, True, False);
-                commons.screen.blit(img, (screenpositionx - img.get_width() * 0.5 + offsetx, screenpositiony - img.get_height() * 0.5));
+                    currentItemSurfaceCopy = pygame.transform.flip(currentItemSurfaceCopy, True, False);
+                commons.screen.blit(currentItemSurfaceCopy, (screenPositionX - currentItemSurfaceCopy.get_width() * 0.5 + offsetx, screenPositionY - currentItemSurfaceCopy.get_height() * 0.5));
+            
             elif self.itemSwing:
+                currentItemSurfaceCopy = self.currentItemImage.copy();
                 if not commons.IS_HOLDING_ITEM:
                     item = self.hotbar[self.hotbarIndex];
                 else:
                     item = commons.ITEM_HOLDING;
                 if self.direction == 1:  
-                    hitRect = Rect(self.position[0], self.position[1] - img.get_height() * 0.5, img.get_width(), img.get_height());
+                    hitRect = Rect(self.position[0], self.position[1] - currentItemSurfaceCopy.get_height() * 0.5, currentItemSurfaceCopy.get_width(), currentItemSurfaceCopy.get_height());
                 else:
-                    hitRect = Rect(self.position[0] - img.get_width(), self.position[1] - img.get_height() * 0.5, img.get_width(), img.get_height());
+                    hitRect = Rect(self.position[0] - currentItemSurfaceCopy.get_width(), self.position[1] - currentItemSurfaceCopy.get_height() * 0.5, currentItemSurfaceCopy.get_width(), currentItemSurfaceCopy.get_height());
 
                 # Probably should be in update
                 for enemy in entity_manager.enemies:
@@ -989,11 +1060,14 @@ class Player():
                             else:
                                 direction = 1;
                             val = int(item.attackDamage);
-                            if random.random() < item.critStrikeChance:
+                            if random.random() <= item.critStrikeChance:
                                 crit = True;
                             else:
                                 crit = False;
-                            enemy.Damage(val, item.knockback, direction = direction, crit = crit);
+
+                            toEnemy = shared_methods.NormalizeVector2((enemy.position[0] - self.position[0], enemy.position[1] - self.position[1]));
+
+                            enemy.Damage(val, ["melee", "Player"], item.knockback, direction = direction, crit = crit, sourceVelocity = (toEnemy[0] * 30, toEnemy[1] * 30));
                             self.enemiesHit.append(int(enemy.gameID));
                 try:
                     if self.direction == 1:
@@ -1010,19 +1084,19 @@ class Player():
                 angle1 = self.swingAngle;
                 angle2 = (self.swingAngle) * math.pi / 180;
                 if self.direction == 1:
-                    offsetx = img.get_width() * 0.5;
+                    offsetx = currentItemSurfaceCopy.get_width() * 0.5;
                 else:
-                    offsetx = -img.get_width() * 0.5;
+                    offsetx = -currentItemSurfaceCopy.get_width() * 0.5;
                 if self.direction == 1:
-                    offsety = -math.sin(angle2 + 0.2) * img.get_height() * 2 / 3 - img.get_height() / 4;
+                    offsety = -math.sin(angle2 + 0.2) * currentItemSurfaceCopy.get_height() * 2 / 3 - currentItemSurfaceCopy.get_height() / 4;
                 else:
-                    offsety = -math.sin(angle2 + 0.3) * img.get_width() * 2 / 3 +img.get_height() * 0.5;
-                commons.screen.blit(shared_methods.RotateSurface(img, angle1), (screenpositionx - 20 + offsetx, screenpositiony - 33 + offsety));
+                    offsety = -math.sin(angle2 + 0.3) * currentItemSurfaceCopy.get_width() * 2 / 3 + currentItemSurfaceCopy.get_height() * 0.5;
+                commons.screen.blit(shared_methods.RotateSurface(currentItemSurfaceCopy, angle1), (screenPositionX - 20 + offsetx, screenPositionY - 33 + offsety));
                 
-            commons.screen.blit(self.armSprites[self.armAnimationFrame], (screenpositionx - 20, screenpositiony - 33));
+            commons.screen.blit(self.armSprites[self.armAnimationFrame], (screenPositionX - 20, screenPositionY - 33));
         
         if commons.HITBOXES and self.alive: # Show hitbox
-            pygame.draw.rect(commons.screen,  (255, 0, 0), Rect(screenpositionx - commons.PLAYER_WIDTH * 0.5, screenpositiony - commons.PLAYER_HEIGHT * 0.5, commons.PLAYER_WIDTH, commons.PLAYER_HEIGHT), 1);
+            pygame.draw.rect(commons.screen,  (255, 0, 0), Rect(screenPositionX - commons.PLAYER_WIDTH * 0.5, screenPositionY - commons.PLAYER_HEIGHT * 0.5, commons.PLAYER_WIDTH, commons.PLAYER_HEIGHT), 1);
 
     def DrawHP(self):
         if self.HP > 0:

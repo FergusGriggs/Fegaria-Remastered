@@ -209,26 +209,26 @@ def UpdateMenuButtons():
 				elif menuButton.text == "Tiny (100x350)":
 					commons.GAME_SUB_STATE = "WORLDNAMING";
 					commons.TEXT_INPUT = "";
-					world.MAP_SIZE_X = 100;
-					world.MAP_SIZE_Y = 350;
+					world.WORLD_SIZE_X = 100;
+					world.WORLD_SIZE_Y = 350;
 
 				elif menuButton.text == "Small (200x550)":
 					commons.GAME_SUB_STATE = "WORLDNAMING";
 					commons.TEXT_INPUT = "";
-					world.MAP_SIZE_X = 200;
-					world.MAP_SIZE_Y = 550;
+					world.WORLD_SIZE_X = 200;
+					world.WORLD_SIZE_Y = 550;
 
 				elif menuButton.text == "Medium (400x700)":
 					commons.GAME_SUB_STATE = "WORLDNAMING";
 					commons.TEXT_INPUT = "";
-					world.MAP_SIZE_X = 400;
-					world.MAP_SIZE_Y = 700;
+					world.WORLD_SIZE_X = 400;
+					world.WORLD_SIZE_Y = 700;
 
 				elif menuButton.text == "Large (700x1000)":
 					commons.GAME_SUB_STATE = "WORLDNAMING";
 					commons.TEXT_INPUT = "";
-					world.MAP_SIZE_X = 700;
-					world.MAP_SIZE_Y = 1000;
+					world.WORLD_SIZE_X = 700;
+					world.WORLD_SIZE_Y = 1000;
 
 				elif menuButton.text == "Set World Name":
 					world.WORLD_NAME = commons.TEXT_INPUT;
