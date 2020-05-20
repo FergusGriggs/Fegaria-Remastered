@@ -63,7 +63,7 @@ class Player():
             self.creationDate = creationDate;
 
         if hotbar == None:
-            self.hotbar = [Item(25), Item(15), Item(19), Item(17), Item(4, amnt = 999), Item(28), None, None, None, None];
+            self.hotbar = [Item(15), Item(25), None, None, None, None, None, None, None, None];
         else:
             self.hotbar = hotbar;
         self.hotbarIndex = 0;
@@ -557,7 +557,7 @@ class Player():
         elif not self.inventoryOpen:
             item = self.hotbar[self.hotbarIndex];
 
-        if item == None:
+        if item == None and not rightClick:
             return;
 
         screenPositionX = self.position[0] - entity_manager.cameraPosition[0] + commons.WINDOW_WIDTH * 0.5;
@@ -650,11 +650,19 @@ class Player():
                             if world.mapData[blockPosition[0]][blockPosition[1]][0] == -1:
                                 if world.GetNeighborCount(blockPosition[0], blockPosition[1]) > 0:
                                     world.mapData[blockPosition[0]][blockPosition[1]][0] = tables.itemData[block.ID][5];
+
+                                    if world.TileInMapRange(blockPosition[0], blockPosition[1] + 1):
+                                        if world.mapData[blockPosition[0]][blockPosition[1]][0] == 5:
+                                            world.mapData[blockPosition[0]][blockPosition[1]][0] = 0;
+
                                     world.UpdateTerrainSurface(blockPosition[0], blockPosition[1]);
+
                                     if commons.SOUND:
                                         sound_manager.PlayHitSfx(block.ID);
                                     self.shouldSwingArm = True;
                                     blockPlaced = True;
+
+                                    
                         
                     if blockPlaced:
                         if not commons.CREATIVE:
@@ -1011,7 +1019,7 @@ class Player():
                         self.chestImage.blit(shared_methods.OutlineText(str(self.chestItems[i][j].amnt), (255, 255, 255), commons.SMALLFONT), (24 + 48 * i, 30 + 48 * j));
 
     def UpdateCraftableItems(self):
-        self.craftableItems = [[i, 1] for i in range(32)];
+        self.craftableItems = [[i, 1] for i in range(33)];
 
     def RenderCraftableItemsSurf(self):
         self.craftableItemsSurf = pygame.Surface((48, len(self.craftableItems) * 48));

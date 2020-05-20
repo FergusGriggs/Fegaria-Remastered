@@ -13,11 +13,13 @@
 - Added large world size (Long load times)
 - Lots of settings can now be toggled in game (Look in controls.txt for info)
 - Smooth camera improved to ease out as well
-- Added grass growth
+- Grass growth
+
 - Added generated structure: Mine Shaft
 
 - Added block/item/light source: Lamp
 - Added block/item: Spike
+- Added block/item: Pot
 
 - Added common item prefix: Quick AF
 

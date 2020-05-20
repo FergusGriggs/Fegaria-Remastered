@@ -39,7 +39,7 @@ def Initialize():
     NOISE_OFFSETS = [random.random() * 1000, random.random() * 1000, random.random() * 1000]; #randomly generate offsets
 
     global GRASS_GROW_TICK, GRASS_GROW_DELAY;
-    GRASS_GROW_DELAY = 7.5;
+    GRASS_GROW_DELAY = 2.5;
     GRASS_GROW_TICK = GRASS_GROW_DELAY;
 
 class World():
@@ -414,6 +414,12 @@ def GenerateTerrain(genType, blitProgress = False):
                     CreateMineShaft(newPosition);
                     minePositions.append(newPosition);
                     break;
+        
+        if blitProgress:
+            BlitGenerationStage("Placing Pots");
+
+        for i in range(int(WORLD_SIZE_X * WORLD_SIZE_Y / 1200)):
+            SpawnPot(random.randint(0, WORLD_SIZE_X - 1), random.randint(0, WORLD_SIZE_Y - 50))
 
         if blitProgress:
             BlitGenerationStage("Growing Trees");
@@ -785,7 +791,7 @@ def CheckGrowGrass():
         GRASS_GROW_TICK -= commons.DELTA_TIME;
 
 def GrowGrass():
-    for i in range(int(WORLD_SIZE_X * 0.1)):
+    for i in range(int(WORLD_SIZE_X * 0.05)):
         randomX = random.randint(0, WORLD_SIZE_X - 1);
         for j in range(110):
             if mapData[randomX][j][0] != -1:
@@ -793,3 +799,20 @@ def GrowGrass():
                     mapData[randomX][j][0] = 5;
                     UpdateTerrainSurface(randomX, j);
                 break;
+
+def SpawnPot(positionX, positionY):
+    viableBlocks = 0;
+    for i in range(50):
+        if TileInMapRange(positionX, positionY):
+            if viableBlocks >= 2 and mapData[positionX][positionY][0] != -1:
+                mapData[positionX][positionY - 1][0] = 284;
+                mapData[positionX][positionY - 2][0] = 274;
+                break;
+                
+            if mapData[positionX][positionY][0] == -1 and mapData[positionX][positionY][1] != -1:
+                viableBlocks += 1;
+
+            positionY += 1;
+        else:
+            return;
+        

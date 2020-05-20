@@ -260,6 +260,7 @@ def RenderStatsText(pos):
             
             stats = [];
             stats.append(shared_methods.OutlineText(item.GetName(), shared_methods.GetTierColour(item.tier), commons.DEFAULTFONT));
+
             if "weapon" in item.tags or "tool" in item.tags:
                 stats.append(shared_methods.OutlineText(str(round(item.attackDamage, 1)).rstrip('0').rstrip('.') + " damage", (255,255,255), commons.DEFAULTFONT));
                 stats.append(shared_methods.OutlineText(str(round(item.critStrikeChance * 100, 1)).rstrip('0').rstrip('.') + "% critical strike chance", (255, 255, 255), commons.DEFAULTFONT));
@@ -672,7 +673,7 @@ defaultModel = player.Model(0, 0, (127, 72, 36),
                    (129, 113, 45), 
                    (80,  100,  45));
 
-pygame.display.set_caption("fegaria remastered " + __version__);
+pygame.display.set_caption("Fegaria Remastered " + __version__);
 
 SONG_END = pygame.USEREVENT + 1;
 pygame.mixer.music.set_endevent(SONG_END);
@@ -727,7 +728,7 @@ loadMenuSurf = shared_methods.CreateMenuSurface(7, 8, "");
 loadMenuBoxLeft1 = commons.WINDOW_WIDTH * 0.5 - 336 * 0.5;
 loadMenuBoxLeft2 = commons.WINDOW_WIDTH * 0.5 - 315 * 0.5;
 
-screenshotImg = pygame.image.load("res/images/screenshots/" + str(random.randint(1, 24)) + ".png");
+screenshotImg = pygame.image.load("res/images/screenshots/" + str(random.randint(1, 16)) + ".png");
 scale = 280 / screenshotImg.get_height();
 screenshotImg = pygame.transform.scale(screenshotImg, (int(scale * screenshotImg.get_width()), 280));
 boarderImg = shared_methods.CreateMenuSurface(screenshotImg.get_width() // 48 + 2, 7, "");
@@ -1236,9 +1237,11 @@ while gameRunning:
                 
                 # Spawn loot chest at mouse
                 if event.key == K_m:
+                    #world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0] = 274;
+                    #world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1] + 1][0] = 284;
                     if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
                         world.SpawnLootChest(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]);
-
+                    
                         world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1], affectOthers = False);
                         world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0] + 1, commons.TILE_POSITION_MOUSE_HOVERING[1], affectOthers = False);
                         world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1] + 1, affectOthers = False);

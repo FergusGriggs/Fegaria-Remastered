@@ -48,7 +48,7 @@ def CreatePlayer():
     maxHP = commons.PLAYER_DATA[5];
     playTime = commons.PLAYER_DATA[6];
     creationDate = commons.PLAYER_DATA[7];
-    clientPlayer = Player((0,0), model, name = name, hotbar = hotbar, inventory = inventory, HP = HP, maxHP = maxHP, playTime = playTime, creationDate = creationDate);
+    clientPlayer = Player((0, 0), model, name = name, hotbar = hotbar, inventory = inventory, HP = HP, maxHP = maxHP, playTime = playTime, creationDate = creationDate);
 
 def UpdateEnemies():
     for enemy in enemies:
