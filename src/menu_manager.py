@@ -77,8 +77,9 @@ def Initialize():
 
 	menuButtons.append(MenuButton("Changes", (commons.WINDOW_WIDTH * 0.5, 120), commons.XLARGEFONT, 25, False));
 
-	menuButtons.append(MenuButton("PyGame Page", (commons.WINDOW_WIDTH * 0.5, 300), commons.LARGEFONT, 24, True));
-	menuButtons.append(MenuButton("GitHub Page", (commons.WINDOW_WIDTH * 0.5, 340), commons.LARGEFONT, 24, True));
+	menuButtons.append(MenuButton("PyGame Page", (commons.WINDOW_WIDTH * 0.5, 280), commons.LARGEFONT, 24, True));
+	menuButtons.append(MenuButton("GitHub Page", (commons.WINDOW_WIDTH * 0.5, 320), commons.LARGEFONT, 24, True));
+	menuButtons.append(MenuButton("YouTube Page", (commons.WINDOW_WIDTH * 0.5, 360), commons.LARGEFONT, 24, True));
 
 	UpdateActiveMenuButtons();
 
@@ -116,12 +117,16 @@ def UpdateMenuButtons():
 					commons.GAME_SUB_STATE = "CHANGES";
 					
 				elif menuButton.text == "PyGame Page":
-					entity_manager.clientPrompt = prompt.Prompt("browser opened", "PyGame page opened in a new browser tab.", size = (5, 2));
+					entity_manager.clientPrompt = prompt.Prompt("browser opened", "PyGame page opened in a new tab.", size = (5, 2));
 					webbrowser.open("https://www.pygame.org/project/3451");
 
 				elif menuButton.text == "GitHub Page":
-					entity_manager.clientPrompt = prompt.Prompt("browser opened", "GitHub page opened in a new browser tab.", size = (5, 2));
+					entity_manager.clientPrompt = prompt.Prompt("browser opened", "GitHub page opened in a new tab.", size = (5, 2));
 					webbrowser.open("https://github.com/FergusGriggs/Fegaria-Remastered");
+
+				elif menuButton.text == "YouTube Page":
+					entity_manager.clientPrompt = prompt.Prompt("browser opened", "YouTube page opened in a new tab.", size = (5, 2));
+					webbrowser.open("https://www.youtube.com/channel/UC_7e1qyqA39URIlV89MByug");
 
 				elif menuButton.text == "Credits":
 					commons.GAME_SUB_STATE = "CREDITS";

@@ -357,6 +357,7 @@ titleMessages = [
                  "'Oh, it's like terraria but worse'",
                  "Asbestos free!",
                  "Kills 99.9% of bugs!",
+                 "Find it on YouTube!",
                 ]
 
 # Messages displayed when the user presses the quit button in a world
@@ -384,7 +385,7 @@ activeMenuButtons = [["MAIN", 0, 2, 3, 4, 5, 6],
                      ["WORLDSELECTION", 0, 1, 28, 29],
                      ["WORLDCREATION", 0, 1, 30, 31, 32, 33, 34],
                      ["WORLDNAMING", 0, 1, 35],
-                     ["CHANGES", 0, 1, 36, 37, 38],
+                     ["CHANGES", 0, 1, 36, 37, 38, 39],
                     ]
 
 structureTiles = [
