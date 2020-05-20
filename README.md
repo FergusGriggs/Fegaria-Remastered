@@ -1,7 +1,7 @@
 # Fegaria-Remastered
 
  Similar to my other project Fegaria, but with improved graphics, collisions and terrain generation. 
-![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/Screenshots/screenshot12.png)
+![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/res/images/screenshots/7.png)
 
 ## Installation
 I've only used modules that are installed when python 3.6.4 
@@ -24,4 +24,4 @@ file to play the game.
 - Changes listed in changelog.txt
 - Music and sounds from Terraria, not my own.
 
-![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/Screenshots/compilation1.png)
+![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/res/images/compilation1.png)
