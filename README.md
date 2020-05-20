@@ -24,4 +24,4 @@ file to play the game.
 - Changes listed in changelog.txt
 - Music and sounds from Terraria, not my own.
 
-![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/res/images/compilation1.png)
+![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/res/images/screenshots/compilation1.png)
