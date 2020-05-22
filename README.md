@@ -6,7 +6,7 @@ This is a project I started a while back (Successor of Fegaria) and have recentl
 
 ## Installation
 I've only used modules that are installed when python 3.6.4 
-is installed (with the exception of pygame), so all you have to do is run the 'fegaria remastered.py'
+is installed (with the exception of pygame), so all you have to do is run the 'run.pyw'
 file to play the game.
 
 ### Required modules: 
