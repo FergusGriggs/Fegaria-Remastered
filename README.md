@@ -21,9 +21,9 @@ file to play the game.
 - webbrowser
 
 ## Notes:
-- You can turn off and on settings in the CONFIG.txt file
-- Includes tutorial world, full controls in CONTROLS.txt
-- Changes listed in changelog.txt
+- You can turn off and on settings in the 'config.txt' file
+- Includes tutorial world, full controls in 'controls.txt'
+- Changes listed in 'changelog.txt'
 - Music and sounds from Terraria, not my own.
 
 ![alt text](https://github.com/FergusGriggs/Fegaria-Remastered/blob/master/res/images/screenshots/compilation1.png)
