@@ -581,6 +581,8 @@ def parse_item_data():
             item_data["@item_slot_offset_y"] = int(24 - item_data["@image"].get_height() * 0.5)
         except FileNotFoundError:
             item_data["@image"] = None
+        except pygame.error:
+            item_data["@image"] = None
 
         if ItemTag.WEAPON in item_data["@tags"]:
             item_data["@attack_speed"] = int(item_data["@attack_speed"])
@@ -639,6 +641,9 @@ def parse_item_data():
                 item_data["@grapple_chain_image"].set_colorkey((255, 0, 255))
             except FileNotFoundError:
                 item_data["@grapple_chain_image"] = None
+            except pygame.error:
+                item_data["@grapple_chain_image"] = None
+
             try:
                 loaded_surf = pygame.image.load(item_data["@grapple_claw_image_path"]).convert()
                 new_size = (loaded_surf.get_width() * 2, loaded_surf.get_height() * 2)
@@ -646,6 +651,8 @@ def parse_item_data():
                 pygame.transform.scale(loaded_surf, new_size, item_data["@grapple_claw_image"])
                 item_data["@grapple_claw_image"].set_colorkey((255, 0, 255))
             except FileNotFoundError:
+                item_data["@grapple_claw_image"] = None
+            except pygame.error:
                 item_data["@grapple_claw_image"] = None
 
 
@@ -708,6 +715,8 @@ def parse_tile_data():
                 tile_data["@average_colour"] = pygame.transform.average_color(tile_data["@image"])
         except FileNotFoundError:
             tile_data["@image"] = None
+        except pygame.error:
+            tile_data["@image"] = None
 
         tile_data["@item_count_range"] = int_tuple_str_to_int_tuple(tile_data["@item_count_range"])
 
@@ -719,6 +728,8 @@ def parse_tile_data():
                 if override_average_colour:
                     tile_data["@average_colour"] = pygame.transform.average_color(tile_data["@multitile_image"])
             except FileNotFoundError:
+                tile_data["@multitile_image"] = None
+            except pygame.error:
                 tile_data["@multitile_image"] = None
 
         if TileTag.CYCLABLE in tile_data["@tags"]:
@@ -797,6 +808,8 @@ def parse_wall_data():
                 wall_data["@average_colour"] = pygame.transform.average_color(wall_data["@image"])
 
         except FileNotFoundError:
+            wall_data["@image"] = None
+        except pygame.error:
             wall_data["@image"] = None
 
 
