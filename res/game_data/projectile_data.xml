@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<projectiles>
+	<projectile id="0" id_str="fg.projectile.INVALID"></projectile>
+	<projectile id="1" id_str="fg.projectile.arrow"></projectile>
+	<projectile id="2" id_str="fg.projectile.bullet"></projectile>
+</projectiles>

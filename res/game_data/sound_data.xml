@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<sounds>
+	<sound id="0" id_str="fg.sound.INVALID" variation_paths="" volume="1"></sound>
+	<sound id="1" id_str="fg.sound.tink" variation_paths="res/sounds/tink_0.wav,res/sounds/tink_1.wav,res/sounds/tink_2.wav" volume="1"></sound>
+	<sound id="2" id_str="fg.sound.dig" variation_paths="res/sounds/dig_0.wav,res/sounds/dig_1.wav,res/sounds/dig_2.wav" volume="1"></sound>
+	<sound id="3" id_str="fg.sound.jump" variation_paths="res/sounds/jump.wav" volume="1"></sound>
+	<sound id="4" id_str="fg.sound.player_hurt" variation_paths="res/sounds/player_hit_0.wav,res/sounds/player_hit_1.wav,res/sounds/player_hit_2.wav" volume="1"></sound>
+	<sound id="5" id_str="fg.sound.grass" variation_paths="res/sounds/grass.wav" volume="1"></sound>
+	<sound id="6" id_str="fg.sound.player_death" variation_paths="res/sounds/player_killed.wav" volume="1"></sound>
+	<sound id="7" id_str="fg.sound.mirror" variation_paths="res/sounds/mirror.wav" volume="1"></sound>
+	<sound id="8" id_str="fg.sound.slime_hurt" variation_paths="res/sounds/npc_hit_0.wav" volume="1"></sound>
+	<sound id="9" id_str="fg.sound.slime_death" variation_paths="res/sounds/npc_killed_0.wav" volume="1"></sound>
+	<sound id="10" id_str="fg.sound.swing" variation_paths="res/sounds/swing.wav" volume="1"></sound>
+	<sound id="11" id_str="fg.sound.bow" variation_paths="res/sounds/bow.wav" volume="1"></sound>
+	<sound id="12" id_str="fg.sound.gun_shot" variation_paths="res/sounds/gun_shot.wav" volume="1"></sound>
+	<sound id="13" id_str="fg.sound.bullet_hit" variation_paths="res/sounds/bullet_hit.wav" volume="1"></sound>
+	<sound id="14" id_str="fg.sound.grab" variation_paths="res/sounds/grab.wav" volume="1"></sound>
+	<sound id="15" id_str="fg.sound.run" variation_paths="res/sounds/run_0.wav,res/sounds/run_1.wav,res/sounds/run_2.wav" volume="1"></sound>
+	<sound id="16" id_str="fg.sound.coins" variation_paths="res/sounds/coins.wav" volume="0.3"></sound>
+	<sound id="17" id_str="fg.sound.menu_open" variation_paths="res/sounds/menu_open.wav" volume="0.3"></sound>
+	<sound id="18" id_str="fg.sound.menu_close" variation_paths="res/sounds/menu_close.wav" volume="0.3"></sound>
+	<sound id="19" id_str="fg.sound.menu_select" variation_paths="res/sounds/menu_select.wav" volume="0.3"></sound>
+	<sound id="20" id_str="fg.sound.chat" variation_paths="res/sounds/chat.wav" volume="0.3"></sound>
+	<sound id="21" id_str="fg.sound.door_opened" variation_paths="res/sounds/door_opened.wav" volume="1"></sound>
+	<sound id="22" id_str="fg.sound.door_closed" variation_paths="res/sounds/door_closed.wav" volume="1"></sound>
+	<sound id_str="fg.sound.random_sound" id="23" variation_paths="res/sounds/bow.wav,res/sounds/bullet_hit.wav,res/sounds/chat.wav,res/sounds/coins.wav,res/sounds/day.mp3,res/sounds/dig_0.wav,res/sounds/dig_1.wav,res/sounds/dig_2.wav,res/sounds/door_closed.wav,res/sounds/door_opened.wav,res/sounds/grab.wav,res/sounds/grass.wav,res/sounds/gun_shot.wav,res/sounds/jump.wav,res/sounds/menu_close.wav,res/sounds/menu_open.wav,res/sounds/menu_select.wav,res/sounds/mirror.wav,res/sounds/npc_hit_0.wav,res/sounds/npc_killed_0.wav,res/sounds/player_hit_0.wav,res/sounds/player_hit_1.wav,res/sounds/player_hit_2.wav,res/sounds/player_killed.wav,res/sounds/run_0.wav,res/sounds/run_1.wav,res/sounds/run_2.wav,res/sounds/swing.wav,res/sounds/tink_0.wav,res/sounds/tink_1.wav,res/sounds/tink_2.wav" volume="1"></sound>
+</sounds>

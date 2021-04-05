@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ais>
+	<ai id="0" id_str="fg.loot.INVALID"></ai>
+	<ai id="1" id_str="fg.loot.slime"></ai>
+	<ai id="2" id_str="fg.loot.bunny"></ai>
+</ais>

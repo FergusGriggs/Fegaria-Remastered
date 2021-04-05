@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<entities>
+	<entity id="0" id_str="fg.entity.INVALID" name="INVALID"></entity>
+	<entity id="1" id_str="fg.entity.green_slime" name="Green Slime"></entity>
+</entities>

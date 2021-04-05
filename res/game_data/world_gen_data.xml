@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<world_gens>
+	<world_gen id="0" id_str="fg.world_gen.INVALID"></world_gen>
+	<world_gen id="1" id_str="fg.world_gen.default"></world_gen>
+</world_gens>

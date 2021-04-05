@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<crafting_recipes>
+	<crafting_recipe id="0" id_str="fg.crafting_recipe.INVALID"></crafting_recipe>
+	<crafting_recipe id="1" id_str="fg.crafting_recipe.crafting_table"></crafting_recipe>
+</crafting_recipes>
