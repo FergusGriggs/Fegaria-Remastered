@@ -1,4 +1,4 @@
-============= Movement =============
+d============= Movement =============
 
 Move Left -> A
 Move Right -> D
@@ -42,7 +42,9 @@ SFX Volume Down -> Shift + Left Arrow
 
 ========== General/Misc =============
 
-Quit Game -> Windows Close Cross / Open Inventory + Bottom Right Quit button
-Random Prompt Test -> Shift + V
+Take World Snapshot -> Shift + T
 Get Tile ID at Mouse -> P
 Get Wall ID at Mouse -> Shift + P
+Random Prompt Test -> Shift + V
+Quit Game -> Windows Close Cross / Open Inventory + Bottom Right Quit button
+

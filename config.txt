@@ -1,4 +1,4 @@
-(pixels/tuple/int)(800,600/960,720/1280,720)RESOLUTION = 800,600
+(pixels/tuple/int)(800,600/960,720/1280,720)RESOLUTION = 1280,720
 (float)GRAVITY = 1
 (bool)FULLSCREEN = 0
 (bool)PARTICLES = 1
@@ -17,5 +17,5 @@
 (bool)SPLASHSCREEN = 1
 (float/seconds)AUTOSAVEFREQUENCY = 120
 (bool)EXPERIMENTALLIGHTING = 1
-(bool)SMOOTHCAM = 1
+(bool)SMOOTHCAM = 0
 (bool)DRAWUI = 1
