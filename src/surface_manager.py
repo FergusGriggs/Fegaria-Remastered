@@ -51,19 +51,6 @@ def load_background_surfaces():
         surf = pygame.transform.scale(surf, (40, 40))
         backgrounds.append(surf)
 
-
-def load_wall_surfaces():
-    global walls
-    wall_tileset_image = pygame.image.load("res/images/wallTileset.png").convert_alpha()
-    walls = []
-    for j in range(10):
-        for i in range(10):
-            surf = pygame.Surface((8, 8), pygame.SRCALPHA)
-            surf.blit(wall_tileset_image, (-i * 8, -j * 8))
-            surf = pygame.transform.scale(surf, (commons.BLOCKSIZE, commons.BLOCKSIZE))
-            walls.append(surf)
-
-
 def load_projectile_surfaces():
     global projectiles
     projectile_tileset_image = pygame.image.load("res/images/projectileTileset.png").convert()
@@ -130,7 +117,6 @@ def compile_background_images():  # creates a larger surf compiled with backgrou
 load_tile_mask_surfaces()
 load_misc_gui_surfaces()
 load_background_surfaces()
-load_wall_surfaces()
 load_projectile_surfaces()
 load_hair_surfaces()
 load_torso_surfaces()
