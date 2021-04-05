@@ -859,6 +859,8 @@ def parse_sound_data():
                 sound_data["@variations"].append(sound)
             except FileNotFoundError:
                 pass
+            except pygame.error:
+                pass
 
 
 def create_sound_id_str_hash_table():
