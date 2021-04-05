@@ -1,1519 +1,1462 @@
-#fegaria_remastered.py
-__author__ = "Fergus Griggs";
-__email__ = "fbob987 at gmail dot com";
-__version__ = "0.1.1";
+# fegaria_remastered.py
+__author__ = "Fergus Griggs"
+__email__ = "fbob987 at gmail dot com"
+__version__ = "0.1.1"
 
 # External module importing
-import pygame, sys, math, time, os, random, pickle, datetime, webbrowser, _thread
+import pygame
+import sys
+import math
+import random
+import pickle
+import _thread
+import datetime
+
 from pygame.locals import *
 
-#set to 8000 for creepy mode (48000 norm)
-pygame.mixer.pre_init(48000, -16, 2, 1024);
-pygame.init();
+# Set to 8000 for creepy mode (48000 norm)
+pygame.mixer.pre_init(48000, -16, 2, 1024)
+pygame.init()
 
 # Loads config file and common variables
-import commons;
-import shared_methods;
-commons.Initialize();
+import commons
+import shared_methods
+import surface_manager
+import entity_manager
+import world
+import menu_manager
+import player
+import game_data
+from game_data import TileTag
+import prompt
 
-import sound_manager;
-sound_manager.Initialize();
-
-import surface_manager;
-surface_manager.Initialize();
-
-import entity_manager;
-entity_manager.Initialize();
-
-import world;
-world.Initialize();
-
-import menu_manager;
-menu_manager.Initialize();
-
-from player import Player;
-import player;
-
-from item import Item;
-
-import tables;
-import prompt;
-
-from colour_picker import ColourPicker;
-
-def DrawTerrainMultiThreadedFunc(threadName, threadID, position, quadrant):
-    global blitThreadOneActive, blitThreadTwoActive, blitThreadThreeActive;
-
-    if quadrant == 0:
-        commons.screen.blit(world.terrainSurface, position, Rect(-position[0], -position[1], commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT));
-        blitThreadOneActive = False;
-    elif quadrant == 1:
-        commons.screen.blit(world.terrainSurface, position, Rect(-position[0] + commons.WINDOW_WIDTH * 0.5, -position[1], commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT));
-        blitThreadTwoActive = False;
-    elif quadrant == 2:
-        commons.screen.blit(world.terrainSurface, position, Rect(-position[0], -position[1] + commons.WINDOW_HEIGHT * 0.5, commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT));
-        blitThreadThreeActive = False;
-    else:
-        commons.screen.blit(world.terrainSurface, position, Rect(-position[0] + commons.WINDOW_WIDTH * 0.5, -position[1] + commons.WINDOW_HEIGHT * 0.5, commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT));
-
-def DrawTerrainMultiThreaded(position):
-    global blitThreadOneActive, blitThreadTwoActive, blitThreadThreeActive;
-    blitThreadOneActive = True;
-    blitThreadTwoActive = True;
-    blitThreadThreeActive = True;
-
-    _thread.start_new_thread(DrawTerrainMultiThreadedFunc, ("Blit Thread One", 2, position, 0));
-    _thread.start_new_thread(DrawTerrainMultiThreadedFunc, ("Blit Thread One", 3, position, 1));
-    _thread.start_new_thread(DrawTerrainMultiThreadedFunc, ("Blit Thread One", 4, position, 2));
-    DrawTerrainMultiThreadedFunc("Main Thread", 0, position, 3);
-
-    i = 0;
-    while blitThreadOneActive or blitThreadTwoActive or blitThreadThreeActive:
-        i += 1;
+from item import *
 
 
+class TimeState(Enum):
+    DAWN = 0
+    DAY = 1
+    DUSK = 2
+    NIGHT = 3
 
-def MoveParallax(val):
-    global parallaxPos
-    parallaxPos = (parallaxPos[0] + val[0], parallaxPos[1] + val[1])
-    if parallaxPos[0] > 0:
-        parallaxPos = (-40 + parallaxPos[0], parallaxPos[1])
-    elif parallaxPos[0] < -39: parallaxPos = (parallaxPos[0] + 40, parallaxPos[1])
-    if parallaxPos[1] > 0:
-        parallaxPos = (parallaxPos[0], -40 + parallaxPos[1])
-    elif parallaxPos[1] < -39:
-        parallaxPos = (parallaxPos[0], parallaxPos[1] + 40)
 
-def FadeBackground(ID):
-    global fadeBackgroundID, fadeBack, fadeFloat;
-    fadeBackgroundID = ID;
-    fadeBack = True;
-    fadeFloat = 0;
+"""================================================================================================================= 
+    move_parallax -> void
 
-# Check if player has moved biome and change background
-def CheckChangeBackground(): 
-    global backgroundTick;
-    if backgroundTick <= 0:
-        backgroundTick += 0.25;
-        if entity_manager.cameraPosition[1] > 200 * commons.BLOCKSIZE:
-            if entity_manager.cameraPosition[0] < BIOMEBOARDER_X1 * commons.BLOCKSIZE:
-                if fadeBackgroundID != 0:
-                    FadeBackground(0);
-            elif entity_manager.cameraPosition[0] < BIOMEBOARDER_X2 * commons.BLOCKSIZE:
-                if fadeBackgroundID != 2:
-                    FadeBackground(2);
+    Moves the background by a set amount, looping back when necessary
+-----------------------------------------------------------------------------------------------------------------"""
+def move_parallax(val):
+    global parallax_pos
+    parallax_pos = (parallax_pos[0] + val[0], parallax_pos[1] + val[1])
+    if parallax_pos[0] > 0:
+        parallax_pos = (-40 + parallax_pos[0], parallax_pos[1])
+    elif parallax_pos[0] < -39: parallax_pos = (parallax_pos[0] + 40, parallax_pos[1])
+    if parallax_pos[1] > 0:
+        parallax_pos = (parallax_pos[0], -40 + parallax_pos[1])
+    elif parallax_pos[1] < -39:
+        parallax_pos = (parallax_pos[0], parallax_pos[1] + 40)
+
+
+"""================================================================================================================= 
+    fade_background -> void
+
+    Fade the background to a different background type
+-----------------------------------------------------------------------------------------------------------------"""
+def fade_background(new_background_id):
+    global fade_background_id, fade_back, fade_float
+    fade_background_id = new_background_id
+    fade_back = True
+    fade_float = 0.0
+
+
+"""================================================================================================================= 
+    check_change_background -> void
+
+    Check if player has moved biome and change the background if necessary
+-----------------------------------------------------------------------------------------------------------------"""
+def check_change_background():
+    global background_tick, background_scroll_vel
+    if background_tick <= 0:
+        background_tick += 0.25
+        if entity_manager.camera_position[1] > 200 * commons.BLOCKSIZE:
+            if entity_manager.camera_position[0] < world.biome_border_x_1 * commons.BLOCKSIZE:
+                if fade_background_id != 0:
+                    fade_background(0)
+            elif entity_manager.camera_position[0] < world.biome_border_x_2 * commons.BLOCKSIZE:
+                if fade_background_id != 2:
+                    fade_background(2)
             else:
-                if fadeBackgroundID != 2:
-                    FadeBackground(2);
-            backgroundScrollVel = 0;
-        if entity_manager.cameraPosition[1] > 110 * commons.BLOCKSIZE:
-            if entity_manager.cameraPosition[0] < BIOMEBOARDER_X1 * commons.BLOCKSIZE:
-                if fadeBackgroundID != 0:
-                    FadeBackground(0);
-            elif entity_manager.cameraPosition[0] < BIOMEBOARDER_X2 * commons.BLOCKSIZE:
-                if fadeBackgroundID != 1:
-                    FadeBackground(1);
+                if fade_background_id != 2:
+                    fade_background(2)
+            background_scroll_vel = 0
+        if entity_manager.camera_position[1] > 110 * commons.BLOCKSIZE:
+            if entity_manager.camera_position[0] < world.biome_border_x_1 * commons.BLOCKSIZE:
+                if fade_background_id != 0:
+                    fade_background(0)
+            elif entity_manager.camera_position[0] < world.biome_border_x_2 * commons.BLOCKSIZE:
+                if fade_background_id != 1:
+                    fade_background(1)
             else:
-                if fadeBackgroundID != 4:
-                    FadeBackground(4);
-            backgroundScrollVel = 0;
+                if fade_background_id != 4:
+                    fade_background(4)
+            background_scroll_vel = 0
 
-        elif entity_manager.cameraPosition[1] > 15 * commons.BLOCKSIZE:
-            if fadeBackgroundID != 3:
-                FadeBackground(3);
+        elif entity_manager.camera_position[1] > 15 * commons.BLOCKSIZE:
+            if commons.CURRENT_TIME_STATE == TimeState.NIGHT:
+                if fade_background_id != 7:
+                    fade_background(7)
+            elif commons.CURRENT_TIME_STATE == TimeState.DAWN or commons.CURRENT_TIME_STATE == TimeState.DUSK:
+                if fade_background_id != 8:
+                    fade_background(8)
+            else:
+                if fade_background_id != 3:
+                    fade_background(3)
 
         else:
-            if fadeBackgroundID != 5:
-                FadeBackground(5);
-            backgroundScrollVel = 0.1;
+            if commons.CURRENT_TIME_STATE == TimeState.NIGHT:
+                if fade_background_id != 7:
+                    fade_background(7)
+            elif commons.CURRENT_TIME_STATE == TimeState.DAWN or commons.CURRENT_TIME_STATE == TimeState.DUSK:
+                if fade_background_id != 8:
+                    fade_background(8)
+            else:
+                if fade_background_id != 5:
+                    fade_background(5)
+            background_scroll_vel = 0.1
     else:
-        backgroundTick -= commons.DELTA_TIME;
-        
-# Message shown on death
-def DrawDeathMessage():
-    text = shared_methods.OutlineText("You Were Slain", (255, 255, 255), commons.LARGEFONT)
-    val = (1 - (entity_manager.clientPlayer.respawnTick / 5.0)) * 255;
-    if val > 255:
-        val = 255;
-    text.set_alpha(val);
-    commons.screen.blit(text, (commons.WINDOW_WIDTH * 0.5 - text.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5));
-       
-def RenderHandText():
-    global handText;
-    item = entity_manager.clientPlayer.hotbar[entity_manager.clientPlayer.hotbarIndex];
-    if item != None:
-        colour = shared_methods.GetTierColour(item.tier);
-        handText = shared_methods.OutlineText(item.GetName(), colour, commons.DEFAULTFONT);
+        background_tick -= commons.DELTA_TIME
+
+
+"""================================================================================================================= 
+    draw_death_message -> void
+
+    Renders and draws a large death message to the screen
+-----------------------------------------------------------------------------------------------------------------"""
+def draw_death_message():
+    death_text = shared_methods.outline_text("You Were Slain", (255, 255, 255), commons.LARGEFONT)
+    alpha = (1 - (entity_manager.client_player.respawn_tick / 5.0)) * 255
+    if alpha > 255:
+        alpha = 255
+    death_text.set_alpha(alpha)
+    commons.screen.blit(death_text, (commons.WINDOW_WIDTH * 0.5 - death_text.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5))
+
+
+"""================================================================================================================= 
+    render_hand_text -> void
+
+    Renders the full name of the item that the player has equipped in their hotbar to a surface
+-----------------------------------------------------------------------------------------------------------------"""
+def render_hand_text():
+    global hand_text
+    item = entity_manager.client_player.items[ItemLocation.HOTBAR][entity_manager.client_player.hotbar_index]
+    if item is not None:
+        colour = shared_methods.get_tier_colour(item.get_tier())
+        hand_text = shared_methods.outline_text(item.get_name(), colour, commons.DEFAULTFONT)
     else:
-        handText = shared_methods.OutlineText("", (255, 255, 255), commons.DEFAULTFONT);
+        hand_text = shared_methods.outline_text("", (255, 255, 255), commons.DEFAULTFONT)
         
 
-def RunSplashScreen():
-    done = False;
-    age = 0;
-    text = shared_methods.OutlineText("A Fergus Griggs game...", (255, 255, 255), commons.LARGEFONT);
-    blackSurf = pygame.Surface((commons.WINDOW_WIDTH, commons.WINDOW_HEIGHT));
-    sprites = Player.RenderSprites(defaultModel, directions = 1);
+"""================================================================================================================= 
+    run_splash_screen -> void
 
-    torsoFrame = 2;
-    armFrame = 6;
+    Run when booting the game to display some text and the default character running across the screen
+-----------------------------------------------------------------------------------------------------------------"""
+def run_splash_screen():
+    age = 0
+    splash_text = shared_methods.outline_text("A Fergus Griggs game...", (255, 255, 255), commons.LARGEFONT)
+    black_surf = pygame.Surface((commons.WINDOW_WIDTH, commons.WINDOW_HEIGHT))
+    sprites = player.render_sprites(commons.DEFAULT_PLAYER_MODEL, directions=1)
 
-    xpos = -30;
+    torso_frame = 2
+    arm_frame = 6
 
-    slowTick = 0;
-    fastTick = 0;
+    x_pos = -30
 
-    commons.OLD_TIME_MILLISECONDS = pygame.time.get_ticks();
+    slow_tick = 0
+    fast_tick = 0
+
+    commons.OLD_TIME_MILLISECONDS = pygame.time.get_ticks()
     
-    splashScreenRunning = True
+    splash_screen_running = True
 
-    while splashScreenRunning:
-        commons.DELTA_TIME = (pygame.time.get_ticks() - commons.OLD_TIME_MILLISECONDS) * 0.001;
-        commons.OLD_TIME_MILLISECONDS = pygame.time.get_ticks();
+    while splash_screen_running:
+        commons.DELTA_TIME = (pygame.time.get_ticks() - commons.OLD_TIME_MILLISECONDS) * 0.001
+        commons.OLD_TIME_MILLISECONDS = pygame.time.get_ticks()
 
-        commons.screen.blit(surface_manager.largeBackgrounds[1], (0, 0));
-        entity_manager.DrawParticles();
+        commons.screen.blit(surface_manager.large_backgrounds[1], (0, 0))
+        entity_manager.draw_particles()
 
         if age < 0.5:
-            blackSurf.set_alpha(255);
+            black_surf.set_alpha(255)
 
-        elif age < 1.5 and age > 0.5:
-            alpha = (1.5 - age) * 255;
-            blackSurf.set_alpha(alpha);
+        elif 0.5 < age < 1.5:
+            alpha = (1.5 - age) * 255
+            black_surf.set_alpha(alpha)
 
-        elif age > 1.5 and age < 4.5:
-            entity_manager.UpdateParticles();
-            if slowTick <= 0:
-                slowTick += 0.2;
-                if commons.SOUND:
-                    sound_manager.sounds[random.randint(20, 22)].play();
+        elif 1.5 < age < 4.5:
+            entity_manager.update_particles()
+            if slow_tick <= 0:
+                slow_tick += 0.2
+                game_data.play_sound("fg.sound.run")
             else:
-                slowTick -= commons.DELTA_TIME;
+                slow_tick -= commons.DELTA_TIME
 
-            if fastTick <= 0:
-                fastTick += 0.025;
-                if torsoFrame < 14:
-                    torsoFrame += 1;
+            if fast_tick <= 0:
+                fast_tick += 0.025
+                if torso_frame < 14:
+                    torso_frame += 1
                 else:
-                    torsoFrame = 2;
+                    torso_frame = 2
 
-                if armFrame < 18:
-                    armFrame += 1;
+                if arm_frame < 18:
+                    arm_frame += 1
                 else:
-                    armFrame = 6;
+                    arm_frame = 6
 
                 if commons.PARTICLES:
-                    for i in range(int(4 * commons.PARTICLEDENSITY)):
-                        entity_manager.SpawnParticle((xpos + commons.PLAYER_WIDTH - commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT * 0.25 + commons.PLAYER_HEIGHT * 1.15), (255, 255, 255), life = 0.5, GRAV = -0.4, size = 10, angle = math.pi, spread = math.pi, magnitude = random.random() * 8);
+                    for _ in range(int(4 * commons.PARTICLEDENSITY)):
+                        entity_manager.spawn_particle((x_pos + commons.PLAYER_WIDTH - commons.WINDOW_WIDTH * 0.5, commons.WINDOW_HEIGHT * 0.25 + commons.PLAYER_HEIGHT * 1.15), (255, 255, 255), life=0.5, gravity=-0.4, size=10, angle=math.pi, spread=math.pi, magnitude=random.random() * 8)
 
             else:
-                fastTick -= commons.DELTA_TIME;
+                fast_tick -= commons.DELTA_TIME
 
-            xpos += commons.WINDOW_WIDTH * commons.DELTA_TIME * 0.35;
+            x_pos += commons.WINDOW_WIDTH * commons.DELTA_TIME * 0.35
 
-            commons.screen.blit(sprites[0][torsoFrame], (xpos, commons.WINDOW_HEIGHT * 0.75));
-            commons.screen.blit(sprites[1][armFrame], (xpos, commons.WINDOW_HEIGHT * 0.75));
+            commons.screen.blit(sprites[0][torso_frame], (x_pos, commons.WINDOW_HEIGHT * 0.75))
+            commons.screen.blit(sprites[1][arm_frame], (x_pos, commons.WINDOW_HEIGHT * 0.75))
 
-        elif age > 4.5 and age < 5.5:
-            entity_manager.UpdateParticles();
-            alpha = (age - 4.5) * 255;
-            blackSurf.set_alpha(alpha);
+        elif 4.5 < age < 5.5:
+            entity_manager.update_particles()
+            alpha = (age - 4.5) * 255
+            black_surf.set_alpha(alpha)
 
         elif age > 6.0:
-            splashScreenRunning = False;
-        commons.screen.blit(text, (commons.WINDOW_WIDTH * 0.5 - text.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5));
-        commons.screen.blit(blackSurf, (0, 0));
+            splash_screen_running = False
+        commons.screen.blit(splash_text, (commons.WINDOW_WIDTH * 0.5 - splash_text.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5))
+        commons.screen.blit(black_surf, (0, 0))
 
-        age += commons.DELTA_TIME;
+        age += commons.DELTA_TIME
 
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit();
-                sys.exit();
-            if event.type == KEYDOWN:
-                splashScreenRunning = False;
-        pygame.display.flip();
+        for splash_screen_event in pygame.event.get():
+            if splash_screen_event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+            if splash_screen_event.type == KEYDOWN:
+                splash_screen_running = False
+        pygame.display.flip()
 
-        clock.tick(commons.TARGETFPS);
+        clock.tick(commons.TARGETFPS)
 
-def RenderStatsText(pos):
-    global statsText, lastHoveredItem;
 
-    if pos[0] == "H":
-        item = entity_manager.clientPlayer.hotbar[pos[1]];
+"""================================================================================================================= 
+    render_stats_text -> bool
 
-    elif pos[0] == "I":
-        item = entity_manager.clientPlayer.inventory[pos[1][0]][pos[1][1]];
+    Gets an item using the parsed position and renders it's information to a surface
+-----------------------------------------------------------------------------------------------------------------"""
+def render_stats_text(pos):
+    global stats_text, last_hovered_item
 
-    elif pos[0] == "C":
-        item = entity_manager.clientPlayer.chestItems[pos[1][0]][pos[1][1]];
+    if pos[0] == ItemLocation.CRAFTING_MENU:
+        item = Item(entity_manager.client_player.items[pos[0]][pos[1]][0], entity_manager.client_player.items[pos[0]][pos[1]][1])
+    else:
+        item = entity_manager.client_player.items[pos[0]][pos[1]]
 
-    elif pos[0] == "CM":
-        item = Item(entity_manager.clientPlayer.craftableItems[pos[1]][0], forceNoPrefix = True);
-
-    if item != None:
-        if item != lastHoveredItem: 
-            lastHoveredItem = item;
-            statsText = pygame.Surface((340, 200));
-            statsText.fill((255, 0, 255));
-            statsText.set_colorkey((255, 0, 255));
+    if item is not None:
+        if item != last_hovered_item:
+            last_hovered_item = item
+            stats_text = pygame.Surface((340, 200))
+            stats_text.fill((255, 0, 255))
+            stats_text.set_colorkey((255, 0, 255))
             
-            stats = [];
-            stats.append(shared_methods.OutlineText(item.GetName(), shared_methods.GetTierColour(item.tier), commons.DEFAULTFONT));
+            stats = [shared_methods.outline_text(item.get_name(), shared_methods.get_tier_colour(item.get_tier()), commons.DEFAULTFONT)]
 
-            if "weapon" in item.tags or "tool" in item.tags:
-                stats.append(shared_methods.OutlineText(str(round(item.attackDamage, 1)).rstrip('0').rstrip('.') + " damage", (255,255,255), commons.DEFAULTFONT));
-                stats.append(shared_methods.OutlineText(str(round(item.critStrikeChance * 100, 1)).rstrip('0').rstrip('.') + "% critical strike chance", (255, 255, 255), commons.DEFAULTFONT));
-                stats.append(shared_methods.OutlineText(GetSpeedText(item.attackSpeed), (255, 255, 255), commons.DEFAULTFONT))
-                stats.append(shared_methods.OutlineText(GetKnockbackText(item.knockback), (255, 255, 255), commons.DEFAULTFONT))
+            if item.has_tag(ItemTag.WEAPON):
+                stats.append(shared_methods.outline_text(str(round(item.get_attack_damage(), 1)).rstrip('0').rstrip('.') + " damage", (255, 255, 255), commons.DEFAULTFONT))
+                stats.append(shared_methods.outline_text(str(round(item.get_crit_chance() * 100, 1)).rstrip('0').rstrip('.') + "% critical strike chance", (255, 255, 255), commons.DEFAULTFONT))
+                stats.append(shared_methods.outline_text(get_speed_text(item.get_attack_speed()), (255, 255, 255), commons.DEFAULTFONT))
+                stats.append(shared_methods.outline_text(get_knockback_text(item.get_knockback()), (255, 255, 255), commons.DEFAULTFONT))
             
-            if "ammo" in item.tags:
-                stats.append(shared_methods.OutlineText("Ammunition", (255, 255, 255), commons.DEFAULTFONT));
-                stats.append(shared_methods.OutlineText(str(tables.projectileData[tables.itemData[item.ID][6]][2]) + " damage", (255, 255, 255), commons.DEFAULTFONT));
-                stats.append(shared_methods.OutlineText(GetKnockbackText(tables.projectileData[tables.itemData[item.ID][6]][3]), (255, 255, 255), commons.DEFAULTFONT));
-                stats.append(shared_methods.OutlineText(str(round(tables.projectileData[tables.itemData[item.ID][6]][7] * 100, 1)) + "% gravity", (255, 255, 255), commons.DEFAULTFONT));
-                stats.append(shared_methods.OutlineText(str(round(tables.projectileData[tables.itemData[item.ID][6]][8] * 100, 1)) + "% drag", (255, 255, 255), commons.DEFAULTFONT));
+            if item.has_tag(ItemTag.AMMO):
+                stats.append(shared_methods.outline_text("Ammunition", (255, 255, 255), commons.DEFAULTFONT))
+                stats.append(shared_methods.outline_text(str(item.get_ammo_damage()) + " damage", (255, 255, 255), commons.DEFAULTFONT))
+                stats.append(shared_methods.outline_text(str(round(item.get_ammo_knockback_mod() * 100, 1)) + "% knockback", (255, 255, 255), commons.DEFAULTFONT))
+                stats.append(shared_methods.outline_text(str(round(item.get_ammo_gravity_mod() * 100, 1)) + "% gravity", (255, 255, 255), commons.DEFAULTFONT))
+                stats.append(shared_methods.outline_text(str(round(item.get_ammo_drag() * 100, 1)) + "% drag", (255, 255, 255), commons.DEFAULTFONT))
 
-            if "material" in item.tags:
-                stats.append(shared_methods.OutlineText("Material", (255, 255, 255), commons.DEFAULTFONT));
+            if item.has_tag(ItemTag.MATERIAL):
+                stats.append(shared_methods.outline_text("Material", (255, 255, 255), commons.DEFAULTFONT))
             
-            if "block" in item.tags:
-                stats.append(shared_methods.OutlineText("Can be placed", (255, 255, 255), commons.DEFAULTFONT));
+            if item.has_tag(ItemTag.TILE):
+                stats.append(shared_methods.outline_text("Can be placed", (255, 255, 255), commons.DEFAULTFONT))
 
-            if item.description != "None":
-                stats.append(shared_methods.OutlineText(item.description, (255, 255, 255), commons.DEFAULTFONT));
-            if item.hasPrefix:
-                if item.prefixData[1][1] != 0:
-                    if item.prefixData[1][1] > 0:
-                        colour = tuple(goodColour);
+            stats.append(shared_methods.outline_text(item.get_description(), (255, 255, 255), commons.DEFAULTFONT))
+
+            if item.has_prefix:
+                if item.prefix_data[1][1] != 0:
+                    if item.prefix_data[1][1] > 0:
+                        colour = tuple(good_colour)
                     else:
-                        colour = tuple(badColour);
-                    stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][1] * 100))) + "% damage", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                if item.prefixData[0] != "universal":
-                    if item.prefixData[1][2] != 0:
-                        if item.prefixData[1][2] > 0:
-                            colour = tuple(goodColour);
+                        colour = tuple(bad_colour)
+                    stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][1] * 100))) + "% damage", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                if item.prefix_data[0] != ItemPrefixGroup.UNIVERSAL:
+                    if item.prefix_data[1][2] != 0:
+                        if item.prefix_data[1][2] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][2] * 100))) + "% speed", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][2] * 100))) + "% speed", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
                 else:
-                    if item.prefixData[1][2] != 0:
-                        if item.prefixData[1][2] > 0:
-                            colour = tuple(goodColour);
+                    if item.prefix_data[1][2] != 0:
+                        if item.prefix_data[1][2] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][2] * 100))) + "% critical strike chance", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                    if item.prefixData[1][3] != 0:
-                        if item.prefixData[1][3] > 0:
-                            colour = tuple(goodColour);
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][2] * 100))) + "% critical strike chance", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                    if item.prefix_data[1][3] != 0:
+                        if item.prefix_data[1][3] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][3] * 100))) + "% knockback", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                if item.prefixData[0] != "universal":
-                    if item.prefixData[1][3] != 0:
-                        if item.prefixData[1][3] > 0:
-                            colour = tuple(goodColour);
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][3] * 100))) + "% knockback", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                if item.prefix_data[0] != ItemPrefixGroup.UNIVERSAL:
+                    if item.prefix_data[1][3] != 0:
+                        if item.prefix_data[1][3] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][3] * 100))) + "% critical strike chance", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                if item.prefixData[0] == "common":
-                    if item.prefixData[1][4] != 0:
-                        if item.prefixData[1][4] > 0:
-                            colour = tuple(goodColour);
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][3] * 100))) + "% critical strike chance", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                if item.prefix_data[0] == ItemPrefixGroup.COMMON:
+                    if item.prefix_data[1][4] != 0:
+                        if item.prefix_data[1][4] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][4] * 100))) + "% knockback", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                if item.prefixData[0] == "melee":
-                    if item.prefixData[1][4] != 0:
-                        if item.prefixData[1][4] > 0:
-                            colour = tuple(goodColour);
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][4] * 100))) + "% knockback", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                if item.prefix_data[0] == ItemPrefixGroup.MELEE:
+                    if item.prefix_data[1][4] != 0:
+                        if item.prefix_data[1][4] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][4] * 100))) + "% size", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                elif item.prefixData[0]=="ranged":
-                    if item.prefixData[1][4]!=0:
-                        if item.prefixData[1][4]>0:
-                            colour = tuple(goodColour);
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][4] * 100))) + "% size", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                elif item.prefix_data[0] == ItemPrefixGroup.RANGED:
+                    if item.prefix_data[1][4] != 0:
+                        if item.prefix_data[1][4] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][4] * 100))) + "% projectile velocity", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                elif item.prefixData[0] == "magic":
-                    if item.prefixData[1][4] != 0:
-                        if item.prefixData[1][4] < 0:
-                            colour = tuple(goodColour);
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][4] * 100))) + "% projectile velocity", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                elif item.prefix_data[0] == ItemPrefixGroup.MAGICAL:
+                    if item.prefix_data[1][4] != 0:
+                        if item.prefix_data[1][4] < 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][4] * 100))) + "% size", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-                if item.prefixData[0]=="melee" or item.prefixData[0]=="ranged" or item.prefixData[0]=="magic":
-                    if item.prefixData[1][5] != 0:
-                        if item.prefixData[1][5] > 0:
-                            colour = tuple(goodColour);
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][4] * 100))) + "% size", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+                if item.prefix_data[0] == ItemPrefixGroup.MELEE or item.prefix_data[0] == ItemPrefixGroup.RANGED or item.prefix_data[0] == ItemPrefixGroup.MAGICAL:
+                    if item.prefix_data[1][5] != 0:
+                        if item.prefix_data[1][5] > 0:
+                            colour = tuple(good_colour)
                         else:
-                            colour = tuple(badColour);
-                        stats.append(shared_methods.OutlineText(AddPlus(str(int(item.prefixData[1][5] * 100))) + "% knockback", colour, commons.DEFAULTFONT, outlineColour = shared_methods.DarkenColour(colour)));
-            for i in range(len(stats)):
-                statsText.blit(stats[i], (0, i * 15));
-        return True;
-    return False;
+                            colour = tuple(bad_colour)
+                        stats.append(shared_methods.outline_text(add_plus(str(int(item.prefix_data[1][5] * 100))) + "% knockback", colour, commons.DEFAULTFONT, outline_colour=shared_methods.darken_colour(colour)))
+            for stat_index in range(len(stats)):
+                stats_text.blit(stats[stat_index], (0, stat_index * 15))
+        return True
+    return False
 
-def UpdateLight(threadName, threadID):
-    global lightSurf, mapLight, XMIN, XMAX, YMIN, YMAX, threadActive, newestLightSurf, newestLightSurfPos, threadUpdatingData, lastThreadTime;
-    threadActive = True;
 
-    targetPosition = (entity_manager.cameraPosition[0] + (entity_manager.cameraPositionDifference[0] / commons.DELTA_TIME) * lastThreadTime, entity_manager.cameraPosition[1] + (entity_manager.cameraPositionDifference[1] / commons.DELTA_TIME) * lastThreadTime);
+"""================================================================================================================= 
+    update_light -> void
 
-    XMIN = int(targetPosition[0] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEX);
-    XMAX = int(targetPosition[0] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEX);
-    YMIN = int(targetPosition[1] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEY);
-    YMAX = int(targetPosition[1] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEY);
+    Run by the lighting thread to update the light surface and it's position in the world
+-----------------------------------------------------------------------------------------------------------------"""
+def update_light(thread_name, thread_id):
+    global light_surf, map_light, light_min_x, light_max_x, light_min_y, light_max_y, thread_active, newest_light_surf, newest_light_surf_pos, last_thread_time
+    thread_active = True
 
-    XMINCHANGE = 0;
-    YMINCHANGE = 0;
+    target_position = (entity_manager.camera_position[0] + (entity_manager.camera_position_difference[0] / commons.DELTA_TIME) * last_thread_time, entity_manager.camera_position[1] + (entity_manager.camera_position_difference[1] / commons.DELTA_TIME) * last_thread_time)
 
-    if XMIN < 0:
-        XMINCHANGE = -XMIN;
-        XMIN = 0;
-    if YMIN < 0:
-        YMINCHANGE = -YMIN;
-        YMIN = 0;
+    light_min_x = int(target_position[0] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEX)
+    light_max_x = int(target_position[0] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEX)
+    light_min_y = int(target_position[1] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEY)
+    light_max_y = int(target_position[1] // commons.BLOCKSIZE + LIGHTRENDERDISTANCEY)
 
-    if XMIN >= world.WORLD_SIZE_X or  YMIN >= world.WORLD_SIZE_Y or XMAX < 0 or YMAX < 0:
-        threadActive = False;
-        return;
+    min_change_x = 0
+    min_change_y = 0
 
-    tempPos = ((targetPosition[0] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEX + XMINCHANGE) * commons.BLOCKSIZE, (targetPosition[1] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEY + YMINCHANGE) * commons.BLOCKSIZE);
+    if light_min_x < 0:
+        min_change_x = -light_min_x
+        light_min_x = 0
+    if light_min_y < 0:
+        min_change_y = -light_min_y
+        light_min_y = 0
+
+    if light_min_x >= world.WORLD_SIZE_X or light_min_y >= world.WORLD_SIZE_Y or light_max_x < 0 or light_max_y < 0:
+        thread_active = False
+        return
+
+    temp_pos = ((target_position[0] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEX + min_change_x) * commons.BLOCKSIZE, (target_position[1] // commons.BLOCKSIZE - LIGHTRENDERDISTANCEY + min_change_y) * commons.BLOCKSIZE)
     
-    if XMAX > world.WORLD_SIZE_X:
-        XMAX = world.WORLD_SIZE_X;
-    if YMAX > world.WORLD_SIZE_Y:
-        YMAX = world.WORLD_SIZE_Y;
+    if light_max_x > world.WORLD_SIZE_X:
+        light_max_x = world.WORLD_SIZE_X
+    if light_max_y > world.WORLD_SIZE_Y:
+        light_max_y = world.WORLD_SIZE_Y
 
-    #timeBefore = pygame.time.get_ticks();
+    # timeBefore = pygame.time.get_ticks()
 
-    for i in range(XMIN, XMAX):
-        for j in range(YMIN, YMAX):
-            mapLight[i][j] = max(0, mapLight[i][j] - 4);
+    for x_index in range(light_min_x, light_max_x):
+        for y_index in range(light_min_y, light_max_y):
+            map_light[x_index][y_index] = max(0, map_light[x_index][y_index] - 16)
 
-    #mapLight = [[0 for i in range(world.WORLD_SIZE_Y)] for j in range(world.WORLD_SIZE_X)];
-    
+    # mapLight = [[0 for i in range(world.WORLD_SIZE_Y)] for j in range(world.WORLD_SIZE_X)]
 
-    for i in range(XMIN, XMAX):
-        for j in range(YMIN, YMAX):
-            if world.mapData[i][j][1] == -1 and world.mapData[i][j][0] == -1:
-                if j < 110:
-                    FillLight(i, j, globalLighting);
-                #else:
-                    #FillLight(i, j, 4);
-            elif world.mapData[i][j][0] == 264:
-                FillLight(i, j, 14);
-    
-    #print("Fill Light MS: ", pygame.time.get_ticks() - timeBefore);
+    for x_index in range(light_min_x, light_max_x):
+        for y_index in range(light_min_y, light_max_y):
+            if y_index < 110:
+                if world.world.tile_data[x_index][y_index][1] == game_data.air_wall_id and world.world.tile_data[x_index][y_index][0] == game_data.air_tile_id:
+                    fill_light(x_index, y_index, commons.CURRENT_SKY_LIGHTING)
+            tile_emission = game_data.tile_id_light_emission_lookup[world.world.tile_data[x_index][y_index][0]]
+            if tile_emission > 0:
+                fill_light(x_index, y_index, tile_emission)
 
-    rangeX = XMAX - XMIN;
-    rangeY = YMAX - YMIN;
+    # print("Fill Light MS: ", pygame.time.get_ticks() - timeBefore)
 
-    #timeBefore = pygame.time.get_ticks();
+    range_x = light_max_x - light_min_x
+    range_y = light_max_y - light_min_y
 
-    lightSurf = pygame.Surface((rangeX, rangeY), pygame.SRCALPHA);
+    # timeBefore = pygame.time.get_ticks()
 
-    for i in range(rangeX):
-        for j in range(rangeY):
-            lightSurf.set_at((i, j), (0, 0, 0, (15 - mapLight[i + XMIN][j + YMIN]) * 17));
+    light_surf = pygame.Surface((range_x, range_y), pygame.SRCALPHA)
 
-    lightSurf = pygame.transform.scale(lightSurf, (rangeX * commons.BLOCKSIZE, rangeY * commons.BLOCKSIZE));
+    for x_index in range(range_x):
+        for y_index in range(range_y):
+            tile_dat = world.world.tile_data[light_min_x + x_index][light_min_y + y_index]
+            if tile_dat[0] == game_data.air_tile_id and tile_dat[1] == game_data.air_wall_id:
+                light_surf.set_at((x_index, y_index), (0, 0, 0, 255 - commons.CURRENT_SKY_LIGHTING))
+            else:
+                light_surf.set_at((x_index, y_index), (0, 0, 0, 255 - map_light[x_index + light_min_x][y_index + light_min_y]))
 
-    threadUpdatingData = True;
-    newestLightSurfPos = tempPos;
-    newestLightSurf = lightSurf;
-    threadUpdatingData = False;
-    threadActive = False;
+    light_surf = pygame.transform.scale(light_surf, (range_x * commons.BLOCKSIZE, range_y * commons.BLOCKSIZE))
 
-    #print("Scale Copy MS: ", pygame.time.get_ticks() - timeBefore);
+    newest_light_surf_pos = temp_pos
+    newest_light_surf = light_surf
+    thread_active = False
 
-def FillLight(i, j, lightValue):
-    global mapLight;
-    if i >= XMIN and i < XMAX and j >= YMIN and j < YMAX:
-        newlightValue = max(0, lightValue - tables.tileData[world.mapData[i][j][0]][1]);
-        if newlightValue > mapLight[i][j]:
-            mapLight[i][j] = int(newlightValue);
-            FillLight(i - 1, j, newlightValue);
-            FillLight(i + 1, j, newlightValue);
-            FillLight(i, j - 1, newlightValue);
-            FillLight(i, j + 1, newlightValue);
+    # print("Scale Copy MS: ", pygame.time.get_ticks() - timeBefore)
+
+
+"""================================================================================================================= 
+    fill_light -> void
+
+    Recursively calls itself to populate data in the map_light array
+-----------------------------------------------------------------------------------------------------------------"""
+def fill_light(x_pos, y_pos, light_value):
+    global map_light
+    if light_min_x <= x_pos < light_max_x and light_min_y <= y_pos < light_max_y:
+        light_reduction = game_data.tile_id_light_reduction_lookup[world.world.tile_data[x_pos][y_pos][0]]
+        new_light_value = max(0, light_value - light_reduction)
+        if new_light_value > map_light[x_pos][y_pos]:
+            map_light[x_pos][y_pos] = int(new_light_value)
+            fill_light(x_pos - 1, y_pos, new_light_value)
+            fill_light(x_pos + 1, y_pos, new_light_value)
+            fill_light(x_pos, y_pos - 1, new_light_value)
+            fill_light(x_pos, y_pos + 1, new_light_value)
         else:
-            return;
+            return
     else:
-        return;
+        return
 
-def GetSpeedText(speed):
+
+"""================================================================================================================= 
+    get_speed_text -> string
+
+    Gets a string relating to the speed value given
+-----------------------------------------------------------------------------------------------------------------"""
+def get_speed_text(speed):
     if speed < 2:
-        return "Insanely fast speed";
+        return "Insanely fast speed"
     elif speed < 10:
-        return "Extremely fast speed";
+        return "Extremely fast speed"
     elif speed < 25:
-        return "Very fast speed";
+        return "Very fast speed"
     elif speed < 40:
-        return "Fast speed";
+        return "Fast speed"
     elif speed < 60:
-        return "Normal speed";
+        return "Normal speed"
     elif speed < 80:
-        return "Slow speed";
+        return "Slow speed"
     else:
-        return "Very Slow Speed";
+        return "Very Slow Speed"
 
-def GetKnockbackText(knockback):
+
+"""================================================================================================================= 
+    get_knockback_text -> string
+
+    Gets a string relating to the knockback value given
+-----------------------------------------------------------------------------------------------------------------"""
+def get_knockback_text(knockback):
     if knockback == 0:
-        return "No knockback";
+        return "No knockback"
     elif knockback < 2:
-        return "Very weak knockback";
+        return "Very weak knockback"
     elif knockback < 5:
-        return "Weak knockback";
+        return "Weak knockback"
     elif knockback < 7:
-        return "Average knockback";
+        return "Average knockback"
     elif knockback < 9:
-        return "Strong knockback";
+        return "Strong knockback"
     else:
-        return "Very strong knockback";
+        return "Very strong knockback"
 
-def GetBouncesText(bounces):
+
+"""================================================================================================================= 
+    get_bounces_text -> string
+
+    Cleans up ammunition's bounce text
+-----------------------------------------------------------------------------------------------------------------"""
+def get_bounces_text(bounces):
     if bounces == 0:
-        return "No bounces";
+        return "No bounces"
+    elif bounces == 1:
+        return "1 bounce"
     else:
-        return str(bounces) + " bounces";
+        return str(bounces) + " bounces"
 
-def AddPlus(string):
-    if string[0]!="-":
-        string="+"+string
+
+"""================================================================================================================= 
+    add_plus -> string
+
+    Adds a plus to a string if it doesn't start with a minus
+-----------------------------------------------------------------------------------------------------------------"""
+def add_plus(string):
+    if string[0] != "-":
+        string = "+" + string
     return string
 
-def DrawInventoryHoverText():
-    global canDropHolding, canPickupItem, itemDropTick, itemDropRate;
-    found = False;
 
+"""================================================================================================================= 
+    draw_inventory_hover_text -> void
+
+    Checks if the player is hovering over an item in the UI and displays the item's info if they are
+-----------------------------------------------------------------------------------------------------------------"""
+def draw_inventory_hover_text():
+    global can_drop_holding, can_pickup_item, item_drop_tick, item_drop_rate
+    pos = None
+
+    # Inventory
     if Rect(5, 20, 480, 244).collidepoint(commons.MOUSE_POS):
-        for i in range(10):
-            if Rect(5 + 48 * i, 20, 48, 48).collidepoint(commons.MOUSE_POS):
-                found = True;
-                pos = ["H", i];
-                break;
+        for hotbar_index in range(10):
+            if Rect(5 + 48 * hotbar_index, 20, 48, 48).collidepoint(commons.MOUSE_POS):
+                pos = [ItemLocation.HOTBAR, hotbar_index]
+                break
 
-        for j in range(4):
-            for i in range(10):
-                if Rect(5 + 48 * i, 67 + 48 * j, 48, 48).collidepoint(commons.MOUSE_POS):
-                    found = True;
-                    pos = ["I", (i, j)];
-                    break;
+        for inventory_index in range(40):
+            slot_x = inventory_index % 10
+            slot_y = inventory_index // 10
+            if Rect(5 + 48 * slot_x, 67 + 48 * slot_y, 48, 48).collidepoint(commons.MOUSE_POS):
+                pos = [ItemLocation.INVENTORY, inventory_index]
+                break
 
-    elif Rect(245, 265, 384, 192).collidepoint(commons.MOUSE_POS) and entity_manager.clientPlayer.chestOpen:
-        for j in range(4):
-            for i in range(5):
-                if Rect(245 + 48 * i, 265 + j * 48, 48, 48).collidepoint(commons.MOUSE_POS):
-                    found = True;
-                    pos = ["C", (i, j)];
-                    break;
-    
+    # Chest
+    elif entity_manager.client_player.chest_open and Rect(245, 265, 384, 192).collidepoint(commons.MOUSE_POS):
+        for chest_index in range(20):
+            slot_x = chest_index % 10
+            slot_y = chest_index // 10
+            if Rect(245 + 48 * slot_x, 265 + slot_y * 48, 48, 48).collidepoint(commons.MOUSE_POS):
+                pos = [ItemLocation.CHEST, chest_index]
+                break
+
+    # Crafting menu
     elif Rect(5, 270, 48, 288).collidepoint(commons.MOUSE_POS):
-        arrpos = (commons.MOUSE_POS[1] - 270 - int(entity_manager.clientPlayer.craftingMenuOffsetY)) // 48;
-        if arrpos >= 0 and arrpos < len(entity_manager.clientPlayer.craftableItems):
+        array_index = (commons.MOUSE_POS[1] - 270 - int(entity_manager.client_player.crafting_menu_offset_y)) // 48
+        if 0 <= array_index < len(entity_manager.client_player.items[ItemLocation.CRAFTING_MENU]):
             if pygame.mouse.get_pressed()[0]:  
                 if not commons.IS_HOLDING_ITEM:
-                    commons.ITEM_HOLDING = Item(entity_manager.clientPlayer.craftableItems[arrpos][0], amnt = entity_manager.clientPlayer.craftableItems[arrpos][1]);
-                    commons.IS_HOLDING_ITEM = True;
-                    canPickupItem = False;
-                    canDropHolding = False;
-                    sound_manager.sounds[19].play();
-                elif canDropHolding:
-                    if commons.ITEM_HOLDING.ID == entity_manager.clientPlayer.craftableItems[arrpos][0]:
-                        if commons.ITEM_HOLDING.amnt < tables.itemData[commons.ITEM_HOLDING.ID][3][10]:
-                            commons.ITEM_HOLDING.amnt += entity_manager.clientPlayer.craftableItems[arrpos][1];
-                            sound_manager.sounds[19].play();
+                    commons.ITEM_HOLDING = Item(entity_manager.client_player.items[ItemLocation.CRAFTING_MENU][array_index][0],
+                                                amnt=entity_manager.client_player.items[ItemLocation.CRAFTING_MENU][array_index][1],
+                                                auto_assign_prefix=True)
+                    commons.IS_HOLDING_ITEM = True
+                    can_pickup_item = False
+                    can_drop_holding = False
+                    game_data.play_sound(commons.ITEM_HOLDING.get_pickup_sound_id_str())
+                elif can_drop_holding:
+                    if commons.ITEM_HOLDING.item_id == entity_manager.client_player.items[ItemLocation.CRAFTING_MENU][array_index][0]:
+                        if commons.ITEM_HOLDING.amnt < commons.ITEM_HOLDING.get_max_stack():
+                            commons.ITEM_HOLDING.amnt += entity_manager.client_player.items[ItemLocation.CRAFTING_MENU][array_index][1]
+                            game_data.play_sound("fg.sound.grab")
             
-            if RenderStatsText(["CM", arrpos]) and not commons.IS_HOLDING_ITEM:
-                commons.screen.blit(statsText, (commons.MOUSE_POS[0] + 10, commons.MOUSE_POS[1] + 10));
-    if found:
-        mouseButtons = pygame.mouse.get_pressed();
+            if render_stats_text([ItemLocation.CRAFTING_MENU, array_index]) and not commons.IS_HOLDING_ITEM:
+                commons.screen.blit(stats_text, (commons.MOUSE_POS[0] + 10, commons.MOUSE_POS[1] + 10))
 
-        if mouseButtons[0] or mouseButtons[2]:
-            if canDropHolding and commons.ITEM_HOLDING!=None:
-                unique = False;
+    if pos is not None:
+        mouse_buttons = pygame.mouse.get_pressed()
 
-                if commons.ITEM_HOLDING.hasPrefix:
-                    unique = True;
-
-                if mouseButtons[0]:
-                    amnt = commons.ITEM_HOLDING.amnt;
+        if mouse_buttons[0] or mouse_buttons[2]:
+            # Dropping holding item
+            if can_drop_holding and commons.ITEM_HOLDING is not None:
+                if mouse_buttons[0]:
+                    amnt = commons.ITEM_HOLDING.amnt
                 else:
-                    amnt = 1;
-                itemAddData = None;
+                    amnt = 1
 
-                if mouseButtons[0] or itemDropTick <= 0:
-                    itemAddData = entity_manager.clientPlayer.GiveItem(commons.ITEM_HOLDING.ID, amnt, position = pos, unique = unique, item = commons.ITEM_HOLDING);
+                item_add_data = None
 
-                if itemAddData != None:
-                    canDropHolding = False;
+                if mouse_buttons[0] or item_drop_tick <= 0:
+                    item_add_data = entity_manager.client_player.give_item(commons.ITEM_HOLDING, amnt, position=pos)
 
-                    if itemAddData[0] == 0:
-                        if commons.SOUND:
-                            if commons.ITEM_HOLDING.ID >= 21 and commons.ITEM_HOLDING.ID <= 24:
-                                sound_manager.sounds[23].play();
-                            else:
-                                sound_manager.sounds[19].play();
-                        if mouseButtons[0]:
-                            commons.ITEM_HOLDING = None;
-                            commons.IS_HOLDING_ITEM = False;
+                if item_add_data is not None:
+                    can_drop_holding = False
+
+                    # Items are being dropped
+                    if item_add_data[0] == ItemSlotClickResult.GAVE_ALL:
+                        game_data.play_sound(commons.ITEM_HOLDING.get_drop_sound_id_str())
+                        if mouse_buttons[0]:
+                            commons.ITEM_HOLDING = None
+                            commons.IS_HOLDING_ITEM = False
                         else:
-                            commons.ITEM_HOLDING.amnt -= 1;
-                            
-                    elif itemAddData[0] == 1:
-                        commons.ITEM_HOLDING.amnt = itemAddData[1];
+                            commons.ITEM_HOLDING.amnt -= 1
 
-                    elif itemAddData[0] == 2:
-                        if commons.ITEM_HOLDING.ID >= 21 and commons.ITEM_HOLDING.ID <= 24:
-                            sound_manager.sounds[23].play();
-                        else:
-                            sound_manager.sounds[19].play();
+                    # Dropping some of the items in hand
+                    elif item_add_data[0] == ItemSlotClickResult.GAVE_SOME:
+                        game_data.play_sound(commons.ITEM_HOLDING.get_drop_sound_id_str())
+                        commons.ITEM_HOLDING.amnt = item_add_data[1]
 
-                        if itemAddData[2] == "I":
-                            entity_manager.clientPlayer.inventory[pos[1][0]][pos[1][1]] = commons.ITEM_HOLDING;
-                        elif itemAddData[2] == "C":
-                            entity_manager.clientPlayer.chestItems[pos[1][0]][pos[1][1]] = commons.ITEM_HOLDING;
-                        else:
-                            entity_manager.clientPlayer.hotbar[pos[1]] = commons.ITEM_HOLDING;
-                        commons.ITEM_HOLDING = itemAddData[1];
+                    # Items are being swapped
+                    elif item_add_data[0] == ItemSlotClickResult.SWAPPED:
+                        game_data.play_sound(commons.ITEM_HOLDING.get_drop_sound_id_str())
+                        entity_manager.client_player.items[item_add_data[2]][pos[1]] = commons.ITEM_HOLDING
+                        commons.ITEM_HOLDING = item_add_data[1]
 
-                    if pos not in entity_manager.clientPlayer.oldInventoryPositions:
-                        entity_manager.clientPlayer.oldInventoryPositions.append(pos);
+                    if pos not in entity_manager.client_player.old_inventory_positions:
+                        entity_manager.client_player.old_inventory_positions.append(pos)
 
-                if itemDropTick <= 0:
-                    itemDropRate -= 1;
-                    if itemDropRate <= 0:
-                        itemDropRate = 0;
-                    itemDropTick = int(itemDropRate);
-                    if commons.ITEM_HOLDING != None and commons.ITEM_HOLDING.amnt <= 0:
-                        commons.ITEM_HOLDING = None;
-                        commons.IS_HOLDING_ITEM = False;
+                if item_drop_tick <= 0:
+                    item_drop_rate -= 1
+                    if item_drop_rate <= 0:
+                        item_drop_rate = 0
+                    item_drop_tick = int(item_drop_rate)
+                    if commons.ITEM_HOLDING is not None and commons.ITEM_HOLDING.amnt <= 0:
+                        commons.ITEM_HOLDING = None
+                        commons.IS_HOLDING_ITEM = False
                 else:
-                    itemDropTick -= 1;
+                    item_drop_tick -= commons.DELTA_TIME
 
-            elif canPickupItem and not mouseButtons[2]:
-                canPickupItem = False;
-                commons.ITEM_HOLDING = entity_manager.clientPlayer.RemoveItem(pos);
-                if commons.ITEM_HOLDING != None:
-                    if commons.SOUND:
-                        if commons.ITEM_HOLDING.ID >= 21 and commons.ITEM_HOLDING.ID <= 24:
-                            sound_manager.sounds[23].play();
-                        else:
-                            sound_manager.sounds[19].play();
-                    commons.IS_HOLDING_ITEM = True;
-                entity_manager.clientPlayer.RenderCurrentItemImage();
+            # Picking up item
+            elif can_pickup_item and not mouse_buttons[2]:
+                can_pickup_item = False
+                commons.ITEM_HOLDING = entity_manager.client_player.remove_item(pos)
+                if commons.ITEM_HOLDING is not None:
+                    game_data.play_sound(commons.ITEM_HOLDING.get_pickup_sound_id_str())
+                    commons.IS_HOLDING_ITEM = True
+                entity_manager.client_player.render_current_item_image()
 
-        if RenderStatsText(pos) and not commons.IS_HOLDING_ITEM:
-            commons.screen.blit(statsText, (commons.MOUSE_POS[0] + 10, commons.MOUSE_POS[1] + 10));
+        if render_stats_text(pos) and not commons.IS_HOLDING_ITEM:
+            commons.screen.blit(stats_text, (commons.MOUSE_POS[0] + 10, commons.MOUSE_POS[1] + 10))
 
     elif pygame.mouse.get_pressed()[2] and commons.IS_HOLDING_ITEM:
-        unique = False;
-        if commons.ITEM_HOLDING.hasPrefix:
-            unique = True;
-        if entity_manager.clientPlayer.direction == 1:
-            velocity = (4, -random.random());
+        if entity_manager.client_player.direction == 1:
+            velocity = (16, -random.random())
         else:
-            velocity = (-4, -random.random());
+            velocity = (-16, -random.random())
 
-        entity_manager.SpawnPhysicsItem(commons.ITEM_HOLDING, entity_manager.clientPlayer.position, pickupDelay = 250, velocity = velocity);
+        entity_manager.spawn_physics_item(commons.ITEM_HOLDING, entity_manager.client_player.position, pickup_delay=250, velocity=velocity)
         
-        commons.IS_HOLDING_ITEM = False;
-        canDropHolding = False;
-        commons.ITEM_HOLDING = None;
-        
-def DrawItemHolding():
+        commons.IS_HOLDING_ITEM = False
+        can_drop_holding = False
+        commons.ITEM_HOLDING = None
+
+
+"""================================================================================================================= 
+    draw_item_holding -> void
+
+    Draws the exit button in the bottom left, also spawns the exit confirmation prompt
+-----------------------------------------------------------------------------------------------------------------"""
+
+
+def draw_item_holding():
     if commons.IS_HOLDING_ITEM:
-        commons.screen.blit(surface_manager.items[commons.ITEM_HOLDING.ID], (commons.MOUSE_POS[0] + 10, commons.MOUSE_POS[1] + 10));
+        commons.screen.blit(commons.ITEM_HOLDING.get_image(), (commons.MOUSE_POS[0] + 10, commons.MOUSE_POS[1] + 10))
         if commons.ITEM_HOLDING.amnt > 1:
-            commons.screen.blit(shared_methods.OutlineText(str(commons.ITEM_HOLDING.amnt), (255, 255, 255), commons.SMALLFONT), (commons.MOUSE_POS[0] + 34, commons.MOUSE_POS[1] + 40));
+            commons.screen.blit(shared_methods.outline_text(str(commons.ITEM_HOLDING.amnt), (255, 255, 255), commons.SMALLFONT), (commons.MOUSE_POS[0] + 34, commons.MOUSE_POS[1] + 40))
 
-def DrawExitButton():
-    global quitButtonHover;
-    top = commons.WINDOW_HEIGHT - 20;
-    left = commons.WINDOW_WIDTH - 50;
+
+"""================================================================================================================= 
+    draw_exit_button -> void
+
+    Draws the exit button in the bottom left, also spawns the exit confirmation prompt
+-----------------------------------------------------------------------------------------------------------------"""
+
+
+def draw_exit_button():
+    global quit_button_hover
+    top = commons.WINDOW_HEIGHT - 20
+    left = commons.WINDOW_WIDTH - 50
     if Rect(left, top, 50, 20).collidepoint(commons.MOUSE_POS):
-        if not quitButtonHover:
-            quitButtonHover = True;
-            if commons.SOUND:
-                sound_manager.sounds[26].play();
-        colour = (230, 230, 0);
+        if not quit_button_hover:
+            quit_button_hover = True
+            game_data.play_sound("fg.sound.menu_select")
+        colour = (230, 230, 0)
         if pygame.mouse.get_pressed()[0]:
-            entity_manager.clientPlayer.inventoryOpen=False
-            entity_manager.clientPlayer.chestOpen=False
-            entity_manager.clientPrompt = prompt.Prompt("Exit", tables.exitMessages[random.randint(0, len(tables.exitMessages) - 1)], button1Name = "Yep", size = (6, 2));
-            commons.WAIT_TO_USE = True;
+            entity_manager.client_player.inventory_open = False
+            entity_manager.client_player.chest_open = False
+            entity_manager.client_prompt = prompt.Prompt("Exit", game_data.exit_messages[random.randint(0, len(game_data.exit_messages) - 1)], button_1_name="Yep", size=(6, 2))
+            commons.WAIT_TO_USE = True
     else:
-        colour = (255, 255, 255);
-        quitButtonHover = False;
-    text = shared_methods.OutlineText("Quit", colour, commons.DEFAULTFONT);
-    commons.screen.blit(text, (left, top));
+        colour = (255, 255, 255)
+        quit_button_hover = False
+    exit_text = shared_methods.outline_text("Quit", colour, commons.DEFAULTFONT)
+    commons.screen.blit(exit_text, (left, top))
 
-def RenderInteractableBlockHover():
-    if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
-        val = world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0];
-        if val >= 255:
-            ID = tables.tileData[val][0];
-            if "interactable" in tables.itemData[ID][1]:
-                commons.screen.blit(surface_manager.items[ID], commons.MOUSE_POS);
 
-goodColour = (10, 230, 10);
-badColour = (230, 10, 10);
+"""================================================================================================================= 
+    draw_interactable_block_hover -> void
 
-#MAX SURF WIDTH IS 16383
+    Draws the item image of an interactable block being hovered by the mouse
+-----------------------------------------------------------------------------------------------------------------"""
 
-defaultModel = player.Model(0, 0, (127, 72, 36), 
-                   (62, 22, 0), 
-                   (0, 0, 0), 
-                   (95, 125, 127), 
-                   (48, 76, 127), 
-                   (129, 113, 45), 
-                   (80,  100,  45));
 
-pygame.display.set_caption("Fegaria Remastered " + __version__);
+def draw_interactable_block_hover():
+    if world.tile_in_map(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
+        tile_id = world.world.tile_data[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0]
+        tile_data = game_data.get_tile_by_id(tile_id)
+        if TileTag.CHEST in tile_data["@tags"] or TileTag.CYCLABLE in tile_data["@tags"]:
+            item_data = game_data.get_item_by_id_str(tile_data["@item_id_str"])
+            commons.screen.blit(item_data["@image"], commons.MOUSE_POS)
 
-SONG_END = pygame.USEREVENT + 1;
-pygame.mixer.music.set_endevent(SONG_END);
 
-ICON = pygame.image.load("res/images/icon.png");
-pygame.display.set_icon(ICON);
+good_colour = (10, 230, 10)
+bad_colour = (230, 10, 10)
 
-clock = pygame.time.Clock();
+# MAX SURF WIDTH IS 16383
+
+pygame.display.set_caption("Fegaria Remastered " + __version__)
+
+song_end_event = pygame.USEREVENT + 1
+pygame.mixer.music.set_endevent(song_end_event)
+
+ICON = pygame.image.load("res/images/icon.png")
+pygame.display.set_icon(ICON)
+
+clock = pygame.time.Clock()
+
+commons.DEFAULT_PLAYER_MODEL = player.Model(0, 0, (127, 72, 36),
+                                            (62, 22, 0),
+                                            (0, 0, 0),
+                                            (95, 125, 127),
+                                            (48, 76, 127),
+                                            (129, 113, 45),
+                                            (80,  100,  45)
+                                            )
 
 if commons.SPLASHSCREEN:
-    RunSplashScreen();
+    run_splash_screen()
     
-fpsText = shared_methods.OutlineText(str(0), (255, 255, 255), commons.DEFAULTFONT);
+fps_text = shared_methods.outline_text(str(0), (255, 255, 255), commons.DEFAULTFONT)
+hand_text = pygame.Surface((0, 0))
+stats_text = pygame.Surface((0, 0))
 
-fadeBack = False;
-fadeFloat = 0;
-fadeBackgroundID = -1;
-backgroundTick = 0;
-backgroundScrollVel = 0;
-autoSaveTick = 0;
-fpsTick = 0;
-lastHoveredItem = None;
-parallaxPos = (0,0);
-canDropHolding = False;
-canPickupItem = False;
-quitButtonHover = False;
-threadActive = False;
-threadUpdatingData = False;
-itemDropTick = 0;
-itemDropRate = 0;
+fade_back = False
+fade_float = 0.0
+fade_background_id = -1
+fade_surf = pygame.Surface((0, 0))
+background_id = 5
 
-blitThreadOneActive = False;
-blitThreadTwoActive = False;
-blitThreadThreeActive = False;
+background_tick = 0
+background_scroll_vel = 0
+auto_save_tick = 0
+fps_tick = 0
+last_hovered_item = None
+parallax_pos = (0, 0)
+can_drop_holding = False
+can_pickup_item = False
+quit_button_hover = False
+thread_active = False
+item_drop_tick = 0
+item_drop_rate = 0
 
-newestLightSurf = pygame.Surface((0,0));
-newestLightSurfPos = (0,0);
+light_surf = pygame.Surface((0, 0))
+newest_light_surf = pygame.Surface((0, 0))
+newest_light_surf_pos = (0, 0)
+light_min_x = 0
+light_max_x = 0
+light_min_y = 0
+light_max_y = 0
 
-globalLighting = 16;
-LIGHTRENDERDISTANCEX = int((commons.WINDOW_WIDTH * 0.5) / commons.BLOCKSIZE) + 9;#38;
-LIGHTRENDERDISTANCEY = int((commons.WINDOW_HEIGHT * 0.5) / commons.BLOCKSIZE) + 9;#34;
+global_lighting = 255
 
-lastThreadTime = 0.2;
-lastThreadStart = pygame.time.get_ticks();
+LIGHTRENDERDISTANCEX = int((commons.WINDOW_WIDTH * 0.5) / commons.BLOCKSIZE) + 9
+LIGHTRENDERDISTANCEY = int((commons.WINDOW_HEIGHT * 0.5) / commons.BLOCKSIZE) + 9
 
-saveSelectSurf = pygame.Surface((315, 360));
-saveSelectSurf.set_colorkey((255, 0, 255));
-saveSelectYOffset = 0;
-saveSelectYVel = 0;
+last_thread_time = 0.2
+last_thread_start = pygame.time.get_ticks()
 
-loadMenuSurf = shared_methods.CreateMenuSurface(7, 8, "");
-loadMenuBoxLeft1 = commons.WINDOW_WIDTH * 0.5 - 336 * 0.5;
-loadMenuBoxLeft2 = commons.WINDOW_WIDTH * 0.5 - 315 * 0.5;
+save_select_surf = pygame.Surface((315, 360))
+save_select_surf.set_colorkey((255, 0, 255))
+save_select_y_offset = 0
+save_select_y_velocity = 0
 
-screenshotImg = pygame.image.load("res/images/screenshots/" + str(random.randint(1, 16)) + ".png");
-scale = 280 / screenshotImg.get_height();
-screenshotImg = pygame.transform.scale(screenshotImg, (int(scale * screenshotImg.get_width()), 280));
-boarderImg = shared_methods.CreateMenuSurface(screenshotImg.get_width() // 48 + 2, 7, "");
+load_menu_surf = shared_methods.create_menu_surface(7, 8, "")
+load_menu_box_left1 = commons.WINDOW_WIDTH * 0.5 - 336 * 0.5
+load_menu_box_left2 = commons.WINDOW_WIDTH * 0.5 - 315 * 0.5
+
+screenshot_img = pygame.image.load("res/images/screenshots/" + str(random.randint(1, 16)) + ".png")
+scale = 280 / screenshot_img.get_height()
+screenshot_img = pygame.transform.scale(screenshot_img, (int(scale * screenshot_img.get_width()), 280))
+border_img = shared_methods.create_menu_surface(screenshot_img.get_width() // 48 + 2, 7, "")
         
-oldTimeMilliseconds = pygame.time.get_ticks();
+old_time_milliseconds = pygame.time.get_ticks()
 
-gameRunning = True;
+game_running = True
 
-while gameRunning:
-    commons.MOUSE_POS = pygame.mouse.get_pos();
-    commons.TILE_POSITION_MOUSE_HOVERING = (int((entity_manager.cameraPosition[0] + commons.MOUSE_POS[0] - commons.WINDOW_WIDTH * 0.5) // commons.BLOCKSIZE), int((entity_manager.cameraPosition[1] + commons.MOUSE_POS[1] - commons.WINDOW_HEIGHT * 0.5) // commons.BLOCKSIZE));
+while game_running:
+    commons.MOUSE_POS = pygame.mouse.get_pos()
+    commons.TILE_POSITION_MOUSE_HOVERING = (int((entity_manager.camera_position[0] + commons.MOUSE_POS[0] - commons.WINDOW_WIDTH * 0.5) // commons.BLOCKSIZE), int((entity_manager.camera_position[1] + commons.MOUSE_POS[1] - commons.WINDOW_HEIGHT * 0.5) // commons.BLOCKSIZE))
     
-    commons.DELTA_TIME = (pygame.time.get_ticks() - oldTimeMilliseconds) * 0.001;
-    oldTimeMilliseconds = pygame.time.get_ticks();
+    commons.DELTA_TIME = (pygame.time.get_ticks() - old_time_milliseconds) * 0.001
+    old_time_milliseconds = pygame.time.get_ticks()
 
-    #If framerate is less than 30, simulate at a slower speed
+    # If framerate is less than 30, simulate at a slower speed
     if commons.DELTA_TIME > 0.033333:
-        commons.DELTA_TIME = 0.033333;
+        commons.DELTA_TIME = 0.033333
 
-    if pygame.key.get_mods() & KMOD_LSHIFT:
-        commons.SHIFT_ACTIVE = True;
+    # Update the sky light value
+    base_zero_to_one_float = math.sin(pygame.time.get_ticks() * 0.00005) * 0.5 + 0.5
+    smoothed_zero_to_one_float = shared_methods.smooth_zero_to_one(base_zero_to_one_float, 2)
+    smoothed_zero_to_one_float = smoothed_zero_to_one_float * 0.75 + 0.25
+
+    commons.CURRENT_SKY_LIGHTING = int(smoothed_zero_to_one_float * global_lighting)
+    # Update the time states using the sky light value
+    if commons.CURRENT_SKY_LIGHTING < 100:
+        commons.CURRENT_TIME_STATE = TimeState.NIGHT
+    elif commons.CURRENT_SKY_LIGHTING < 150:
+        commons.CURRENT_TIME_STATE = TimeState.DAWN
     else:
-        commons.SHIFT_ACTIVE = False;
+        commons.CURRENT_TIME_STATE = TimeState.DAY
+
+    if pygame.key.get_mods() & (KMOD_LSHIFT | KMOD_RSHIFT):
+        commons.SHIFT_ACTIVE = True
+    else:
+        commons.SHIFT_ACTIVE = False
 
     if commons.GAME_STATE == "PLAYING":
-        world.clientWorld.playTime += commons.DELTA_TIME;
-        entity_manager.clientPlayer.playTime += commons.DELTA_TIME;
+        world.world.play_time += commons.DELTA_TIME
+        entity_manager.client_player.play_time += commons.DELTA_TIME
 
-        evenOlderCamPos = entity_manager.oldCameraPosition;
+        evenOlderCamPos = entity_manager.old_camera_position
 
-        entity_manager.oldCameraPosition = (entity_manager.cameraPosition[0], entity_manager.cameraPosition[1]);
+        entity_manager.old_camera_position = (entity_manager.camera_position[0], entity_manager.camera_position[1])
         
-        entity_manager.UpdateEnemies();
-        entity_manager.UpdateProjectiles();
-        entity_manager.UpdateParticles();
-        entity_manager.UpdateMessages();
-        entity_manager.UpdatePhysicsItems();
-        entity_manager.CheckEnemySpawn();
+        entity_manager.update_enemies()
+        entity_manager.update_projectiles()
+        entity_manager.update_particles()
+        entity_manager.update_messages()
+        entity_manager.update_physics_items()
+        entity_manager.check_enemy_spawn()
 
-        entity_manager.clientPlayer.Update();
-        entity_manager.clientPlayer.Animate();
+        entity_manager.client_player.update()
+        entity_manager.client_player.animate()
 
-        entity_manager.UpdateDamageNumbers();
-        entity_manager.UpdateRecentPickups();
+        entity_manager.update_damage_numbers()
+        entity_manager.update_recent_pickups()
         
-        world.CheckGrowGrass();
+        world.check_grow_grass()
 
-        tempCamPosX = entity_manager.cameraPosition[0];
-        tempCamPosY = entity_manager.cameraPosition[1];
+        temp_cam_pos_x = entity_manager.camera_position[0]
+        temp_cam_pos_y = entity_manager.camera_position[1]
 
         if commons.SMOOTHCAM:
-            needToMoveX = (entity_manager.clientPlayer.position[0] - tempCamPosX) * commons.DELTA_TIME * 4;
-            needToMoveY = (entity_manager.clientPlayer.position[1] - tempCamPosY) * commons.DELTA_TIME * 4;
+            need_to_move_x = (entity_manager.client_player.position[0] - temp_cam_pos_x) * commons.DELTA_TIME * 4
+            need_to_move_y = (entity_manager.client_player.position[1] - temp_cam_pos_y) * commons.DELTA_TIME * 4
 
-            needToMoveMagnitude = math.sqrt(needToMoveX ** 2 + needToMoveY ** 2);
-            needToMoveAngle = math.atan2(needToMoveY, needToMoveX);
+            need_to_move_magnitude = math.sqrt(need_to_move_x ** 2 + need_to_move_y ** 2)
+            need_to_move_angle = math.atan2(need_to_move_y, need_to_move_x)
 
-            camDiffMagnitude = math.sqrt(entity_manager.cameraPositionDifference[0] ** 2 + entity_manager.cameraPositionDifference[1] ** 2);
+            cam_diff_magnitude = math.sqrt(entity_manager.camera_position_difference[0] ** 2 + entity_manager.camera_position_difference[1] ** 2)
 
-            if camDiffMagnitude < 1:
-                camDiffMagnitude = 1;
+            if cam_diff_magnitude < 1:
+                cam_diff_magnitude = 1
 
-            canMoveMagnitude = camDiffMagnitude * (1 + commons.DELTA_TIME * 8);
+            can_move_magnitude = cam_diff_magnitude * (1 + commons.DELTA_TIME * 8)
 
             # Make sure it does not exceed a max camera speed
-            canMoveMagnitude = min(canMoveMagnitude, 200 * commons.BLOCKSIZE * commons.DELTA_TIME);
+            can_move_magnitude = min(can_move_magnitude, 200 * commons.BLOCKSIZE * commons.DELTA_TIME)
 
-            if needToMoveMagnitude > canMoveMagnitude:
-                tempCamPosX = tempCamPosX + math.cos(needToMoveAngle) * canMoveMagnitude;
-                tempCamPosY = tempCamPosY + math.sin(needToMoveAngle) * canMoveMagnitude;
+            if need_to_move_magnitude > can_move_magnitude:
+                temp_cam_pos_x = temp_cam_pos_x + math.cos(need_to_move_angle) * can_move_magnitude
+                temp_cam_pos_y = temp_cam_pos_y + math.sin(need_to_move_angle) * can_move_magnitude
             else:
-                tempCamPosX = tempCamPosX + math.cos(needToMoveAngle) * needToMoveMagnitude;
-                tempCamPosY = tempCamPosY + math.sin(needToMoveAngle) * needToMoveMagnitude;
+                temp_cam_pos_x = temp_cam_pos_x + math.cos(need_to_move_angle) * need_to_move_magnitude
+                temp_cam_pos_y = temp_cam_pos_y + math.sin(need_to_move_angle) * need_to_move_magnitude
 
         else:
-            tempCamPosX = entity_manager.clientPlayer.position[0];
-            tempCamPosY = entity_manager.clientPlayer.position[1];
+            temp_cam_pos_x = entity_manager.client_player.position[0]
+            temp_cam_pos_y = entity_manager.client_player.position[1]
 
-        if tempCamPosX > world.BORDER_EAST + commons.BLOCKSIZE - commons.WINDOW_WIDTH * 0.5:
-            tempCamPosX = world.BORDER_EAST + commons.BLOCKSIZE - commons.WINDOW_WIDTH * 0.5;
-        elif tempCamPosX < commons.WINDOW_WIDTH * 0.5:
-            tempCamPosX = commons.WINDOW_WIDTH * 0.5;
-        if tempCamPosY > world.BORDER_SOUTH + commons.BLOCKSIZE * 1.5 - commons.WINDOW_HEIGHT * 0.5:
-            tempCamPosY = world.BORDER_SOUTH + commons.BLOCKSIZE * 1.5 - commons.WINDOW_HEIGHT * 0.5
-        elif tempCamPosY < commons.WINDOW_HEIGHT * 0.5:
-            tempCamPosY = commons.WINDOW_HEIGHT * 0.5;
+        if temp_cam_pos_x > world.border_right + commons.BLOCKSIZE - commons.WINDOW_WIDTH * 0.5:
+            temp_cam_pos_x = world.border_right + commons.BLOCKSIZE - commons.WINDOW_WIDTH * 0.5
+        elif temp_cam_pos_x < commons.WINDOW_WIDTH * 0.5:
+            temp_cam_pos_x = commons.WINDOW_WIDTH * 0.5
+        if temp_cam_pos_y > world.border_down + commons.BLOCKSIZE * 1.5 - commons.WINDOW_HEIGHT * 0.5:
+            temp_cam_pos_y = world.border_down + commons.BLOCKSIZE * 1.5 - commons.WINDOW_HEIGHT * 0.5
+        elif temp_cam_pos_y < commons.WINDOW_HEIGHT * 0.5:
+            temp_cam_pos_y = commons.WINDOW_HEIGHT * 0.5
         
-        entity_manager.cameraPosition = (tempCamPosX, tempCamPosY);
+        entity_manager.camera_position = (temp_cam_pos_x, temp_cam_pos_y)
 
-        entity_manager.cameraPositionDifference = (entity_manager.cameraPosition[0] - entity_manager.oldCameraPosition[0], entity_manager.cameraPosition[1] - entity_manager.oldCameraPosition[1]);
+        entity_manager.camera_position_difference = (entity_manager.camera_position[0] - entity_manager.old_camera_position[0], entity_manager.camera_position[1] - entity_manager.old_camera_position[1])
 
-        MoveParallax((-entity_manager.cameraPositionDifference[0] * commons.PARALLAXAMNT, -entity_manager.cameraPositionDifference[1] * commons.PARALLAXAMNT)); #move parallax based on vel
+        move_parallax((-entity_manager.camera_position_difference[0] * commons.PARALLAXAMNT, -entity_manager.camera_position_difference[1] * commons.PARALLAXAMNT))  # move parallax based on vel
         
-        if entity_manager.clientPrompt != None:
-            entity_manager.clientPrompt.Update();
-            if entity_manager.clientPrompt.close == True:
-                entity_manager.clientPrompt = None;
-                commons.WAIT_TO_USE = True;
+        if entity_manager.client_prompt is not None:
+            entity_manager.client_prompt.update()
+            if entity_manager.client_prompt.close:
+                entity_manager.client_prompt = None
+                commons.WAIT_TO_USE = True
         
         if commons.BACKGROUND:
-            if fadeBack:
-                if fadeFloat < 1:
-                    fadeSurf = surface_manager.largeBackgrounds[fadeBackgroundID].copy();
-                    fadeSurf.set_alpha(fadeFloat * 255);
-                    fadeFloat += 0.1;
+            if fade_back:
+                if fade_float < 1.0:
+                    fade_surf = surface_manager.large_backgrounds[fade_background_id].copy()
+                    fade_surf.set_alpha(fade_float * 255)
+                    fade_float += commons.DELTA_TIME
                 else:
-                    fadeBack = False;
-                    backgroundID = int(fadeBackgroundID);
-            commons.screen.blit(surface_manager.largeBackgrounds[backgroundID], parallaxPos);
-            if fadeBack:
-                commons.screen.blit(fadeSurf, parallaxPos);
+                    fade_back = False
+                    background_id = int(fade_background_id)
+            commons.screen.blit(surface_manager.large_backgrounds[background_id], parallax_pos)
+            if fade_back:
+                commons.screen.blit(fade_surf, parallax_pos)
         else:
-            commons.screen.fill((153, 217, 234));
+            commons.screen.fill((153, 217, 234))
         
-        terrainPosition = (commons.WINDOW_WIDTH * 0.5 - entity_manager.cameraPosition[0], commons.WINDOW_HEIGHT * 0.5 - entity_manager.cameraPosition[1]);
-        #DrawTerrainMultiThreaded(terrainPosition);
-        commons.screen.blit(world.terrainSurface, terrainPosition);
-        entity_manager.DrawProjectiles();
-        entity_manager.clientPlayer.Draw();
-        entity_manager.DrawParticles();
-        entity_manager.DrawEnemies();
-        entity_manager.DrawPhysicsItems();
+        terrain_position = (commons.WINDOW_WIDTH * 0.5 - entity_manager.camera_position[0], commons.WINDOW_HEIGHT * 0.5 - entity_manager.camera_position[1])
+        commons.screen.blit(world.terrain_surface, terrain_position)
+        entity_manager.draw_projectiles()
+        entity_manager.client_player.draw()
+        entity_manager.draw_particles()
+        entity_manager.draw_enemies()
+        entity_manager.draw_physics_items()
                 
         if commons.EXPERIMENTALLIGHTING:
-            if not threadActive:
-                lastThreadTime = (pygame.time.get_ticks() - lastThreadStart) * 0.001;
-                _thread.start_new_thread(UpdateLight, ("Lighting Thread", 1));
-                lastThreadStart = pygame.time.get_ticks();
+            if not thread_active:
+                last_thread_time = (pygame.time.get_ticks() - last_thread_start) * 0.001
+                _thread.start_new_thread(update_light, ("LT", 1))
+                last_thread_start = pygame.time.get_ticks()
 
-            commons.screen.blit(newestLightSurf, (newestLightSurfPos[0] - entity_manager.cameraPosition[0] + commons.WINDOW_WIDTH * 0.5, newestLightSurfPos[1] - entity_manager.cameraPosition[1] + commons.WINDOW_HEIGHT * 0.5));
-
-##            if newestLightSurf.get_width()<(10+LIGHTRENDERDISTANCEX*2)*commons.BLOCKSIZE:
-##                if entity_manager.cameraPosition[0]<world.WORLD_SIZE_X*commons.BLOCKSIZE/2:
-##                    lightOffsetX=-(10+LIGHTRENDERDISTANCEX*2)*commons.BLOCKSIZE-newestLightSurf.get_width()
-##                else:
-##                    lightOffsetX=(10+LIGHTRENDERDISTANCEX*2)*commons.BLOCKSIZE-newestLightSurf.get_width()
-##            if newestLightSurf.get_height()<(10+LIGHTRENDERDISTANCEY*2)*commons.BLOCKSIZE:
-##                if entity_manager.cameraPosition[1]<world.WORLD_SIZE_Y*commons.BLOCKSIZE/2:
-##                    lightOffsetY=-(10+LIGHTRENDERDISTANCEY*2)*commons.BLOCKSIZE-newestLightSurf.get_height()
-##                else:
-##                    lightOffsetY=(10+LIGHTRENDERDISTANCEY*2)*commons.BLOCKSIZE-newestLightSurf.get_height()
-
-        
-        if commons.DRAWUI:
-            entity_manager.clientPlayer.DrawHP();
-            commons.screen.blit(entity_manager.clientPlayer.hotbarImage, (5, 20));
-            entity_manager.DrawMessages();
-            
-        entity_manager.DrawDamageNumbers();
-        entity_manager.DrawEnemyHoverText();
-        entity_manager.DrawRecentPickups();
-        RenderInteractableBlockHover();
-
-        if entity_manager.clientPrompt != None:
-            entity_manager.clientPrompt.Draw();
-
-        if not entity_manager.clientPlayer.alive:
-            DrawDeathMessage();
+            newest_light_surf.unlock()
+            commons.screen.blit(newest_light_surf, (newest_light_surf_pos[0] - entity_manager.camera_position[0] + commons.WINDOW_WIDTH * 0.5, newest_light_surf_pos[1] - entity_manager.camera_position[1] + commons.WINDOW_HEIGHT * 0.5))
 
         if commons.DRAWUI:
-            if entity_manager.clientPlayer.inventoryOpen:
-                commons.screen.blit(entity_manager.clientPlayer.inventoryImage, (5, 70));
-                entity_manager.clientPlayer.blitCraftSurf.fill((255, 0, 255));
-                entity_manager.clientPlayer.blitCraftSurf.blit(entity_manager.clientPlayer.craftableItemsSurf, (0, entity_manager.clientPlayer.craftingMenuOffsetY));
-                commons.screen.blit(entity_manager.clientPlayer.blitCraftSurf, (5, 270));
+            entity_manager.client_player.draw_hp()
+            commons.screen.blit(entity_manager.client_player.hotbar_image, (5, 20))
+            entity_manager.draw_messages()
             
-            if entity_manager.clientPlayer.chestOpen:
-                commons.screen.blit(entity_manager.clientPlayer.chestImage, (245, 265));
+        entity_manager.draw_damage_numbers()
+        entity_manager.draw_enemy_hover_text()
+        entity_manager.draw_recent_pickups()
+        draw_interactable_block_hover()
 
-            pygame.draw.rect(commons.screen, (230, 230, 10), Rect(5 + entity_manager.clientPlayer.hotbarIndex * 48, 20, 48, 48), 3);
+        if entity_manager.client_prompt is not None:
+            entity_manager.client_prompt.draw()
 
-            if entity_manager.clientPlayer.inventoryOpen:
-                DrawInventoryHoverText();
-                DrawExitButton();
+        if not entity_manager.client_player.alive:
+            draw_death_message()
 
-            commons.screen.blit(handText, (242 - handText.get_width() * 0.5, 0));
-            DrawItemHolding();
+        if commons.DRAWUI:
+            if entity_manager.client_player.inventory_open:
+                commons.screen.blit(entity_manager.client_player.inventory_image, (5, 70))
+                entity_manager.client_player.blit_craft_surf.fill((255, 0, 255))
+                entity_manager.client_player.blit_craft_surf.blit(entity_manager.client_player.craftable_items_surf, (0, entity_manager.client_player.crafting_menu_offset_y))
+                commons.screen.blit(entity_manager.client_player.blit_craft_surf, (5, 270))
+            
+            if entity_manager.client_player.chest_open:
+                commons.screen.blit(entity_manager.client_player.chest_image, (245, 265))
+
+            pygame.draw.rect(commons.screen, (230, 230, 10), Rect(5 + entity_manager.client_player.hotbar_index * 48, 20, 48, 48), 3)
+
+            if entity_manager.client_player.inventory_open:
+                draw_inventory_hover_text()
+                draw_exit_button()
+
+            if hand_text is not None:
+                commons.screen.blit(hand_text, (242 - hand_text.get_width() * 0.5, 0))
+            draw_item_holding()
         
         if commons.BACKGROUND:
-            CheckChangeBackground();
-            MoveParallax((backgroundScrollVel, 0));
+            check_change_background()
+            move_parallax((background_scroll_vel, 0))
             
-        if autoSaveTick <= 0:
-            autoSaveTick += commons.AUTOSAVEFREQUENCY;
-            entity_manager.clientPlayer.SavePlayer();
-            world.SaveWorld();
+        if auto_save_tick <= 0:
+            auto_save_tick += commons.AUTOSAVEFREQUENCY
+            entity_manager.client_player.save()
+            world.save()
         else:
-            autoSaveTick -= commons.DELTA_TIME;
+            auto_save_tick -= commons.DELTA_TIME
                 
     elif commons.GAME_STATE == "MAINMENU":
-        parallaxPos = (parallaxPos[0] - commons.DELTA_TIME * 20, 0);
-        if parallaxPos[0] < -40:
-            parallaxPos = (0, 0);
-        commons.screen.blit(surface_manager.largeBackgrounds[1], parallaxPos);
+        parallax_pos = (parallax_pos[0] - commons.DELTA_TIME * 20, 0)
+        if parallax_pos[0] < -40:
+            parallax_pos = (0, 0)
+        commons.screen.blit(surface_manager.large_backgrounds[1], parallax_pos)
 
-        menu_manager.UpdateMenuButtons();
-        menu_manager.DrawMenuButtons();
+        menu_manager.update_menu_buttons()
+        menu_manager.draw_menu_buttons()
 
         if commons.GAME_SUB_STATE == "MAIN":
-            commons.screen.blit(boarderImg, (commons.WINDOW_WIDTH * 0.5 - boarderImg.get_width() * 0.5, 95));
-            commons.screen.blit(screenshotImg, (commons.WINDOW_WIDTH * 0.5 - screenshotImg.get_width() * 0.5, 120));
-            commons.screen.blit(menu_manager.titleMessageText, (menu_manager.titleMessageTextLeft, 65));
+            commons.screen.blit(border_img, (commons.WINDOW_WIDTH * 0.5 - border_img.get_width() * 0.5, 95))
+            commons.screen.blit(screenshot_img, (commons.WINDOW_WIDTH * 0.5 - screenshot_img.get_width() * 0.5, 120))
+            commons.screen.blit(menu_manager.title_message_text, (menu_manager.title_message_text_left, 65))
 
-        elif commons.GAME_SUB_STATE ==  "PLAYERSELECTION":
+        elif commons.GAME_SUB_STATE == "PLAYERSELECTION":
             if pygame.mouse.get_pressed()[0] and not commons.WAIT_TO_USE:
-                if Rect(loadMenuBoxLeft1, 120, 336, 384).collidepoint(commons.MOUSE_POS):
+                if Rect(load_menu_box_left1, 120, 336, 384).collidepoint(commons.MOUSE_POS):
                     for i in range(len(commons.PLAYER_SAVE_OPTIONS)):
-                        if Rect(loadMenuBoxLeft2, 132 + i * 62 + saveSelectYOffset, 315, 60).collidepoint(commons.MOUSE_POS):
-                            commons.WAIT_TO_USE = True;
-                            commons.PLAYER_DATA = commons.PLAYER_SAVE_OPTIONS[i][0];
-                            menu_manager.LoadMenuWorldData();
-                            if commons.SOUND:
-                                sound_manager.sounds[24].play();
-                            commons.GAME_SUB_STATE = "WORLDSELECTION";
-                            commons.GAME_SUB_STATE_STACK.append("PLAYERSELECTION");
-                            menu_manager.UpdateActiveMenuButtons();
-                            saveSelectYOffset = 0;
+                        if Rect(load_menu_box_left2, 132 + i * 62 + save_select_y_offset, 315, 60).collidepoint(commons.MOUSE_POS):
+                            commons.WAIT_TO_USE = True
+                            commons.PLAYER_DATA = commons.PLAYER_SAVE_OPTIONS[i][0]
+                            menu_manager.load_menu_world_data()
+                            game_data.play_sound("fg.sound.menu_open")
+                            commons.GAME_SUB_STATE = "WORLDSELECTION"
+                            commons.GAME_SUB_STATE_STACK.append("PLAYERSELECTION")
+                            menu_manager.update_active_menu_buttons()
+                            save_select_y_offset = 0
                             
-            saveSelectYVel *= 0.9;
+            save_select_y_velocity *= 0.9
             if len(commons.PLAYER_SAVE_OPTIONS) > 5:
-                saveSelectYOffset += saveSelectYVel;
-                if saveSelectYOffset < -61 * len(commons.PLAYER_SAVE_OPTIONS) + 350:
-                    saveSelectYOffset = -61 * len(commons.PLAYER_SAVE_OPTIONS) + 350;
-                if saveSelectYOffset > 0:
-                    saveSelectYOffset = 0;
+                save_select_y_offset += save_select_y_velocity
+                if save_select_y_offset < -61 * len(commons.PLAYER_SAVE_OPTIONS) + 350:
+                    save_select_y_offset = -61 * len(commons.PLAYER_SAVE_OPTIONS) + 350
+                if save_select_y_offset > 0:
+                    save_select_y_offset = 0
 
-            commons.screen.blit(loadMenuSurf, (loadMenuBoxLeft1, 120))
-            saveSelectSurf.fill((255, 0, 255))
+            commons.screen.blit(load_menu_surf, (load_menu_box_left1, 120))
+            save_select_surf.fill((255, 0, 255))
             for i in range(len(commons.PLAYER_SAVE_OPTIONS)): 
-                saveSelectSurf.blit(commons.PLAYER_SAVE_OPTIONS[i][1], (0, i*62+saveSelectYOffset))
-            commons.screen.blit(saveSelectSurf, (loadMenuBoxLeft2,  132))
+                save_select_surf.blit(commons.PLAYER_SAVE_OPTIONS[i][1], (0, i * 62 + save_select_y_offset))
+            commons.screen.blit(save_select_surf, (load_menu_box_left2,  132))
 
         elif commons.GAME_SUB_STATE == "PLAYERCREATION":
-            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100));
-            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100));
+            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100))
+            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100))
 
         elif commons.GAME_SUB_STATE == "WORLDSELECTION":
-            Break = False;
+            should_break = False
             if pygame.mouse.get_pressed()[0] and not commons.WAIT_TO_USE:
-                if Rect(loadMenuBoxLeft1, 120, 336, 384).collidepoint(commons.MOUSE_POS):
+                if Rect(load_menu_box_left1, 120, 336, 384).collidepoint(commons.MOUSE_POS):
                     for i in range(len(commons.WORLD_SAVE_OPTIONS)):
-                        if Rect(loadMenuBoxLeft2, 132 + i * 60 + saveSelectYOffset, 315, 60).collidepoint(commons.MOUSE_POS):
-                            if commons.SOUND:
-                                sound_manager.sounds[24].play();
+                        if Rect(load_menu_box_left2, 132 + i * 60 + save_select_y_offset, 315, 60).collidepoint(commons.MOUSE_POS):
+                            game_data.play_sound("fg.sound.menu_open")
 
-                            world.mapData = pickle.load(open("res/worlds/" + commons.WORLD_SAVE_OPTIONS[i][0] + ".wrld","rb")); #open selected save wrld file
-                            world.clientWorld = pickle.load(open("res/worlds/" + commons.WORLD_SAVE_OPTIONS[i][0] + ".dat","rb")); #open selected save dat file
+                            world.load(commons.WORLD_SAVE_OPTIONS[i][0])
+
+                            world.WORLD_SIZE_X, world.WORLD_SIZE_Y = len(world.world.tile_data), len(world.world.tile_data[0])
+
+                            world.biome_border_x_1 = world.WORLD_SIZE_X * 0.333333
+                            world.biome_border_x_2 = world.WORLD_SIZE_X * 0.666666
+
+                            world.border_left = int(commons.BLOCKSIZE)
+                            world.border_right= int(world.WORLD_SIZE_X * commons.BLOCKSIZE - commons.BLOCKSIZE)
+                            world.border_up = int(commons.BLOCKSIZE*1.5)
+                            world.border_down = int(world.WORLD_SIZE_Y * commons.BLOCKSIZE - commons.BLOCKSIZE * 1.5)
+
+                            world.tile_mask_data = [[-1 for _ in range(world.WORLD_SIZE_Y)] for _ in range(world.WORLD_SIZE_X)]
+                            world.wall_tile_mask_data = [[-1 for _ in range(world.WORLD_SIZE_Y)] for _ in range(world.WORLD_SIZE_X)]
+                            background_id = 5
+
+                            entity_manager.create_player()
+
+                            commons.screen.fill((0, 0, 0))
+
+                            text0 = shared_methods.outline_text("Greetings " + entity_manager.client_player.name + ", bear with us while", (255, 255, 255), commons.LARGEFONT)
+                            text1 = shared_methods.outline_text("we load up '" + world.world.name + "'", (255, 255, 255), commons.LARGEFONT)
+                            text2 = shared_methods.outline_text(game_data.helpful_tips[random.randint(0, len(game_data.helpful_tips) - 1)], (255, 255, 255), commons.DEFAULTFONT)
+
+                            commons.screen.blit(text0, (commons.WINDOW_WIDTH * 0.5 - text0.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5 - 30))
+                            commons.screen.blit(text1, (commons.WINDOW_WIDTH * 0.5 - text1.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5))
+                            commons.screen.blit(text2, (commons.WINDOW_WIDTH * 0.5 - text2.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.75))
+
+                            pygame.display.flip()
+                            world.create_terrain_surface()
+
+                            entity_manager.camera_position = (world.world.spawn_position[0], 0)
+                            entity_manager.client_player.position = tuple(world.world.spawn_position)
+                            entity_manager.client_player.render_current_item_image()
+                            entity_manager.client_player.render_hotbar()
+                            entity_manager.client_player.render_inventory()
+
+                            render_hand_text()
                             
-                            world.WORLD_SIZE_X, world.WORLD_SIZE_Y = len(world.mapData), len(world.mapData[0]);
-
-                            BIOMEBOARDER_X1 = world.WORLD_SIZE_X * 0.333333;
-                            BIOMEBOARDER_X2 = world.WORLD_SIZE_X * 0.666666;
-                            world.BORDER_WEST = int(commons.BLOCKSIZE);
-                            world.BORDER_EAST = int(world.WORLD_SIZE_X * commons.BLOCKSIZE - commons.BLOCKSIZE);
-                            world.BORDER_NORTH = int(commons.BLOCKSIZE*1.5);
-                            world.BORDER_SOUTH = int(world.WORLD_SIZE_Y * commons.BLOCKSIZE - commons.BLOCKSIZE * 1.5);
-
-                            world.tileMaskData = [[-1 for i in range(world.WORLD_SIZE_Y)] for i in range(world.WORLD_SIZE_X)];
-                            world.wallTileMaskData = [[-1 for i in range(world.WORLD_SIZE_Y)] for i in range(world.WORLD_SIZE_X)];
-                            backgroundID = 3;
-
-                            entity_manager.CreatePlayer();
-
-                            commons.screen.fill((0,0,0));
-
-                            text0 = shared_methods.OutlineText("Greetings " + entity_manager.clientPlayer.name + ", bear with us while", (255, 255, 255), commons.LARGEFONT);
-                            text1 = shared_methods.OutlineText("we load up '" + world.clientWorld.name + "'", (255, 255, 255), commons.LARGEFONT);
-                            text2 = shared_methods.OutlineText(tables.helpfulTips[random.randint(0, len(tables.helpfulTips) - 1)], (255, 255, 255), commons.DEFAULTFONT);
-
-                            commons.screen.blit(text0, (commons.WINDOW_WIDTH * 0.5 - text0.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5 - 30));
-                            commons.screen.blit(text1, (commons.WINDOW_WIDTH * 0.5 - text1.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.5));
-                            commons.screen.blit(text2, (commons.WINDOW_WIDTH * 0.5 - text2.get_width() * 0.5, commons.WINDOW_HEIGHT * 0.75));
-
-                            pygame.display.flip();
-                            world.CreateTerrainSurface();
-
-                            entity_manager.cameraPosition = (world.clientWorld.spawnPosition[0], 0);
-                            entity_manager.clientPlayer.position = tuple(world.clientWorld.spawnPosition);
-                            entity_manager.clientPlayer.RenderCurrentItemImage();
-                            entity_manager.clientPlayer.RenderHotbar();
-                            entity_manager.clientPlayer.RenderInventory();
-
-                            RenderHandText();
-                            
-                            mapLight = [[0 for i in range(world.WORLD_SIZE_Y)]for j in range(world.WORLD_SIZE_X)];
-                            for i in range(world.WORLD_SIZE_X - 1):
-                                for j in range(world.WORLD_SIZE_Y - 1):
-                                    if world.mapData[i][j][0] == -1 and world.mapData[i][j][1] == -1 and j < 110:
-                                        mapLight[i][j] = globalLighting;
+                            map_light = [[0 for _ in range(world.WORLD_SIZE_Y)]for _ in range(world.WORLD_SIZE_X)]
+                            for map_index_x in range(world.WORLD_SIZE_X - 1):
+                                for map_index_y in range(world.WORLD_SIZE_Y - 1):
+                                    if world.world.tile_data[map_index_x][map_index_y][0] == -1 and world.world.tile_data[map_index_x][map_index_y][1] == -1 and map_index_y < 110:
+                                        map_light[map_index_x][map_index_y] = global_lighting
                                     else:
-                                        mapLight[i][j] = 0;
+                                        map_light[map_index_x][map_index_y] = 0
                             
-                            commons.GAME_STATE = "PLAYING";
-                            Break = True;
-                            break;
-            if not Break:
-                saveSelectYVel *= 0.9;
+                            commons.GAME_STATE = "PLAYING"
+                            should_break = True
+                            break
+
+            if not should_break:
+                save_select_y_velocity *= 0.9
                 if len(commons.WORLD_SAVE_OPTIONS) > 5:
-                    saveSelectYOffset += saveSelectYVel;
-                    if saveSelectYOffset < -61 * len(commons.WORLD_SAVE_OPTIONS) + 350:
-                        saveSelectYOffset = -61 * len(commons.WORLD_SAVE_OPTIONS) + 350;
-                    if saveSelectYOffset > 0:
-                        saveSelectYOffset = 0;
+                    save_select_y_offset += save_select_y_velocity
+                    if save_select_y_offset < -61 * len(commons.WORLD_SAVE_OPTIONS) + 350:
+                        save_select_y_offset = -61 * len(commons.WORLD_SAVE_OPTIONS) + 350
+                    if save_select_y_offset > 0:
+                        save_select_y_offset = 0
                         
-                commons.screen.blit(loadMenuSurf, (loadMenuBoxLeft1, 120));
-                saveSelectSurf.fill((255, 0, 255));
-                for i in range(len(commons.WORLD_SAVE_OPTIONS)): 
-                    saveSelectSurf.blit(commons.WORLD_SAVE_OPTIONS[i][1], (0, i * 62 + saveSelectYOffset));
-                commons.screen.blit(saveSelectSurf, (loadMenuBoxLeft2, 132));
+                commons.screen.blit(load_menu_surf, (load_menu_box_left1, 120))
+                save_select_surf.fill((255, 0, 255))
+                for save_option_index in range(len(commons.WORLD_SAVE_OPTIONS)):
+                    save_select_surf.blit(commons.WORLD_SAVE_OPTIONS[save_option_index][1], (0, save_option_index * 62 + save_select_y_offset))
+                commons.screen.blit(save_select_surf, (load_menu_box_left2, 132))
 
         elif commons.GAME_SUB_STATE == "CLOTHES":
-            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100));
-            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100));
+            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100))
+            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100))
 
         elif commons.GAME_SUB_STATE == "WORLDNAMING":
-            text = shared_methods.OutlineText(commons.TEXT_INPUT + "|", (255, 255, 255), commons.LARGEFONT);
-            commons.screen.blit(text, (commons.WINDOW_WIDTH * 0.5 - text.get_width() * 0.5, 175));
+            text = shared_methods.outline_text(commons.TEXT_INPUT + "|", (255, 255, 255), commons.LARGEFONT)
+            commons.screen.blit(text, (commons.WINDOW_WIDTH * 0.5 - text.get_width() * 0.5, 175))
 
         elif commons.GAME_SUB_STATE == "PLAYERNAMING":
-            text = shared_methods.OutlineText(commons.TEXT_INPUT + "|", (255, 255, 255), commons.LARGEFONT);
-            commons.screen.blit(text, (commons.WINDOW_WIDTH * 0.5 - text.get_width() * 0.5, 175));
-            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100));
-            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100));
+            text = shared_methods.outline_text(commons.TEXT_INPUT + "|", (255, 255, 255), commons.LARGEFONT)
+            commons.screen.blit(text, (commons.WINDOW_WIDTH * 0.5 - text.get_width() * 0.5, 175))
+            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100))
+            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100))
 
         elif commons.GAME_SUB_STATE == "COLOURPICKER":
 
-            entity_manager.clientColourPicker.Update();
+            entity_manager.client_colour_picker.update()
 
-            if entity_manager.clientColourPicker.selectedX != None and entity_manager.clientColourPicker.selectedY != None:
-                commons.PLAYER_MODEL_DATA[commons.PLAYER_MODEL_COLOUR_INDEX][1] = entity_manager.clientColourPicker.selectedX;
-                commons.PLAYER_MODEL_DATA[commons.PLAYER_MODEL_COLOUR_INDEX][2] = entity_manager.clientColourPicker.selectedY;
-                commons.PLAYER_MODEL_DATA[commons.PLAYER_MODEL_COLOUR_INDEX][0] = tuple(entity_manager.clientColourPicker.selectedColour);
-                player.UpdatePlayerModelUsingModelData();
-                commons.PLAYER_FRAMES = Player.RenderSprites(commons.PLAYER_MODEL, directions = 1, armFrameCount = 1, torsoFrameCount = 1);
+            if entity_manager.client_colour_picker.selected_x is not None and entity_manager.client_colour_picker.selected_y is not None:
+                commons.PLAYER_MODEL_DATA[commons.PLAYER_MODEL_COLOUR_INDEX][1] = entity_manager.client_colour_picker.selected_x
+                commons.PLAYER_MODEL_DATA[commons.PLAYER_MODEL_COLOUR_INDEX][2] = entity_manager.client_colour_picker.selected_y
+                commons.PLAYER_MODEL_DATA[commons.PLAYER_MODEL_COLOUR_INDEX][0] = tuple(entity_manager.client_colour_picker.selected_colour)
+                player.update_player_model_using_model_data()
+                commons.PLAYER_FRAMES = player.render_sprites(commons.PLAYER_MODEL, directions=1, arm_frame_count=1, torso_frame_count=1)
             
-            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100));
-            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100));
-            entity_manager.clientColourPicker.Draw();
+            commons.screen.blit(commons.PLAYER_FRAMES[0][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[0][0].get_width() * 0.5, 100))
+            commons.screen.blit(commons.PLAYER_FRAMES[1][0], (commons.WINDOW_WIDTH * 0.5 - commons.PLAYER_FRAMES[1][0].get_width() * 0.5, 100))
+            entity_manager.client_colour_picker.draw()
             
     # Draw a prompt if there is one
-    if entity_manager.clientPrompt != None:
-        entity_manager.clientPrompt.Update();
-        entity_manager.clientPrompt.Draw();
-        if entity_manager.clientPrompt.close == True:
-            entity_manager.clientPrompt = None;
+    if entity_manager.client_prompt is not None:
+        entity_manager.client_prompt.update()
+        entity_manager.client_prompt.draw()
+        if entity_manager.client_prompt.close:
+            entity_manager.client_prompt = None
             
     # Update fps text
     if commons.DRAWUI:
-        if fpsTick <= 0:
-            fpsTick += 0.5;
+        if fps_tick <= 0:
+            fps_tick += 0.5
             if commons.DELTA_TIME > 0:
-                fpsText = shared_methods.OutlineText(str(int(1.0 / commons.DELTA_TIME)), (255, 255, 255), commons.DEFAULTFONT);
+                fps_text = shared_methods.outline_text(str(int(1.0 / commons.DELTA_TIME)), (255, 255, 255), commons.DEFAULTFONT)
         else:
-            fpsTick -= commons.DELTA_TIME;
-        commons.screen.blit(fpsText,(commons.WINDOW_WIDTH - fpsText.get_width(), 0));
+            fps_tick -= commons.DELTA_TIME
+        commons.screen.blit(fps_text, (commons.WINDOW_WIDTH - fps_text.get_width(), 0))
 
     # Reset some variables when the mousebutton is lifted
     if not pygame.mouse.get_pressed()[0]:
         if commons.WAIT_TO_USE and not pygame.mouse.get_pressed()[2]:
-            commons.WAIT_TO_USE = False;
+            commons.WAIT_TO_USE = False
         if commons.IS_HOLDING_ITEM:
-            canDropHolding = True;
+            can_drop_holding = True
         elif not commons.IS_HOLDING_ITEM:
-            canPickupItem = True;
+            can_pickup_item = True
 
     if not pygame.mouse.get_pressed()[2]:
-        itemDropRate = 25;
-        itemDropTick = 0;
+        item_drop_rate = 25
+        item_drop_tick = 0
             
     for event in pygame.event.get():
         if event.type == QUIT:
             if commons.GAME_STATE == "PLAYING":
-                entity_manager.clientPlayer.inventoryOpen = False;
-                entity_manager.clientPlayer.chestOpen = False;
-                entity_manager.clientPrompt = prompt.Prompt("Exit", tables.exitMessages[random.randint(0, len(tables.exitMessages) - 1)], button1Name = "Yep", size = (6, 2));
+                entity_manager.client_player.inventory_open = False
+                entity_manager.client_player.chest_open = False
+                entity_manager.client_prompt = prompt.Prompt("Exit", game_data.exit_messages[random.randint(0, len(game_data.exit_messages) - 1)], button_1_name="Yep", size=(6, 2))
             else:
-                pygame.quit();
-                sys.exit();
-            commons.WAIT_TO_USE = True;
+                pygame.quit()
+                sys.exit()
+            commons.WAIT_TO_USE = True
         
-        if event.type == SONG_END:
-            pygame.mixer.music.load("res/sounds/day.mp3");
-            pygame.mixer.music.set_volume(sound_manager.musicVolume);
-            pygame.mixer.music.play();
-        
+        if event.type == song_end_event:
+            pygame.mixer.music.load("res/sounds/day.mp3")
+            pygame.mixer.music.set_volume(sound_manager.music_volume)
+            pygame.mixer.music.play()
 
-            #if event.key == K_CAPSLOCK:
+            # if event.key == K_CAPSLOCK:
             #    if commons.SHIFT_ACTIVE:
-            #        commons.SHIFT_ACTIVE = False;
+            #        commons.SHIFT_ACTIVE = False
             #    else:
-            #        commons.SHIFT_ACTIVE = True;
+            #        commons.SHIFT_ACTIVE = True
 
-        
         if commons.GAME_STATE == "PLAYING":
             if event.type == KEYDOWN:
                 # Toggle Inventory
                 if event.key == K_ESCAPE:
-                    if entity_manager.clientPlayer.inventoryOpen:
-                        if commons.SOUND:
-                            sound_manager.sounds[25].play();
-                            entity_manager.clientPlayer.RenderCurrentItemImage();
-                        entity_manager.clientPlayer.inventoryOpen = False;
-                        entity_manager.clientPlayer.chestOpen = False;
+                    if entity_manager.client_player.inventory_open:
+                        game_data.play_sound("fg.sound.menu_close")
+                        entity_manager.client_player.render_current_item_image()
+                        entity_manager.client_player.inventory_open = False
+                        entity_manager.client_player.chest_open = False
                     else:
-                        if commons.SOUND:
-                            sound_manager.sounds[24].play();
-                        entity_manager.clientPlayer.inventoryOpen = True;
-                        entity_manager.clientPlayer.craftingMenuOffsetY = 120;
-                        entity_manager.clientPlayer.UpdateCraftableItems();
-                        entity_manager.clientPlayer.RenderCraftableItemsSurf();
-                        entity_manager.clientPrompt = None;
+                        game_data.play_sound("fg.sound.menu_open")
+                        entity_manager.client_player.inventory_open = True
+                        entity_manager.client_player.crafting_menu_offset_y = 120
+                        entity_manager.client_player.update_craftable_items()
+                        entity_manager.client_player.render_craftable_items_surf()
+                        entity_manager.client_prompt = None
                 
                 # Player Move Left
                 if event.key == K_a:
-                    entity_manager.clientPlayer.movingLeft = True;
-                    entity_manager.clientPlayer.animationFrame = random.randint(17, 29);
-                    if not entity_manager.clientPlayer.swingingArm:
-                        entity_manager.clientPlayer.armAnimationFrame = random.randint(26, 39);
-                    if entity_manager.clientPlayer.direction == 1:
-                        entity_manager.clientPlayer.itemSwing = False;
-                    entity_manager.clientPlayer.direction = 0;
+                    entity_manager.client_player.moving_left = True
+                    entity_manager.client_player.animation_frame = random.randint(17, 29)
+                    if not entity_manager.client_player.swinging_arm:
+                        entity_manager.client_player.arm_animation_frame = random.randint(26, 39)
+                    entity_manager.client_player.direction = 0
                 
                 # Player Move Right
                 if event.key == K_d:
-                    entity_manager.clientPlayer.movingRight = True;
-                    entity_manager.clientPlayer.animationFrame = random.randint(2, 15);
-                    if not entity_manager.clientPlayer.swingingArm:
-                        entity_manager.clientPlayer.armAnimationFrame = random.randint(6, 19);
-                    if entity_manager.clientPlayer.direction == 0:
-                        entity_manager.clientPlayer.itemSwing = False;
-                    entity_manager.clientPlayer.direction = 1;
+                    entity_manager.client_player.moving_right = True
+                    entity_manager.client_player.animation_frame = random.randint(2, 15)
+                    if not entity_manager.client_player.swinging_arm:
+                        entity_manager.client_player.arm_animation_frame = random.randint(6, 19)
+                    entity_manager.client_player.direction = 1
 
                 # Player Walk
                 if event.key == K_s:
-                    entity_manager.clientPlayer.movingDown = True;
-                    entity_manager.clientPlayer.animationSpeed = 0.05;
+                    entity_manager.client_player.moving_down = True
+                    entity_manager.client_player.animation_speed = 0.05
 
                 # Player Jump
                 if event.key == K_SPACE:
-                    entity_manager.clientPlayer.Jump();
+                    entity_manager.client_player.jump()
 
                 # Kill All Enemies Cheat
                 if event.key == K_x:
                     if commons.SHIFT_ACTIVE:
                         while len(entity_manager.enemies) > 0:
-                            entity_manager.enemies[0].Kill((0, -50));
-                        entity_manager.AddMessage("All enemies killed", (255, 223, 10), outlineColour = (80, 70, 3));
+                            entity_manager.enemies[0].kill((0, -50))
+                        entity_manager.add_message("All enemies killed", (255, 223, 10), outline_colour=(80, 70, 3))
                 
                 # Spawn Enemy Cheat
                 if event.key == K_f:
                     if commons.SHIFT_ACTIVE:
-                        entity_manager.SpawnEnemy((entity_manager.cameraPosition[0] - commons.WINDOW_WIDTH * 0.5 + commons.MOUSE_POS[0], entity_manager.cameraPosition[1] - commons.WINDOW_HEIGHT * 0.5 + commons.MOUSE_POS[1]));
-                        entity_manager.AddMessage("Spawned enemy", (255, 223, 10), outlineColour = (80, 70, 3));
+                        entity_manager.spawn_enemy((entity_manager.camera_position[0] - commons.WINDOW_WIDTH * 0.5 + commons.MOUSE_POS[0], entity_manager.camera_position[1] - commons.WINDOW_HEIGHT * 0.5 + commons.MOUSE_POS[1]))
+                        entity_manager.add_message("Spawned enemy", (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Respawn Cheats
                 if event.key == K_r:
                     if commons.SHIFT_ACTIVE:
-                        world.clientWorld.spawnPosition = tuple(entity_manager.clientPlayer.position);
-                        entity_manager.AddMessage("Spawn point moved to " + str(world.clientWorld.spawnPosition), (255, 223, 10), outlineColour = (80, 70, 3));
+                        world.world.spawn_position = tuple(entity_manager.client_player.position)
+                        entity_manager.add_message("Spawn point moved to " + str(world.world.spawn_position), (255, 223, 10), outline_colour=(80, 70, 3))
                     else:
                         if commons.PARTICLES:
                             for i in range(int(20 * commons.PARTICLEDENSITY)):
-                                entity_manager.SpawnParticle(entity_manager.clientPlayer.position, (230, 230, 255), magnitude = 1 + random.random() * 6, size = 15, GRAV = 0);
+                                entity_manager.spawn_particle(entity_manager.client_player.position, (230, 230, 255), magnitude=1 + random.random() * 6, size=15, gravity=0)
 
-                        if commons.SOUND:
-                            sound_manager.sounds[12].play();
+                        game_data.play_sound("fg.sound.mirror")
 
-                        entity_manager.clientPlayer.Respawn();
-                        entity_manager.AddMessage("Player respawned", (255, 223, 10), outlineColour = (80, 70, 3));
+                        entity_manager.client_player.respawn()
+                        entity_manager.add_message("Player respawned", (255, 223, 10), outline_colour=(80, 70, 3))
 
                         if commons.PARTICLES:
                             for i in range(int(40 * commons.PARTICLEDENSITY)):
-                                entity_manager.SpawnParticle(entity_manager.clientPlayer.position, (230, 230, 255), magnitude = 1 + random.random() * 6, size = 15, GRAV = 0);
-                
+                                entity_manager.spawn_particle(entity_manager.client_player.position, (230, 230, 255), magnitude=1 + random.random() * 6, size=15, gravity=0)
+
+                # World Snapshot
+                if event.key == K_t:
+                    if commons.SHIFT_ACTIVE:
+                        tile_scale = 2
+                        size_string = str(world.WORLD_SIZE_X * tile_scale) + "x" + str(world.WORLD_SIZE_Y * tile_scale)
+                        date_string = str(datetime.datetime.now()).replace("-", ".").replace(" ", " - ").replace(":", ".")[:-7]
+                        path = "res/images/world_snapshots/" + date_string + " - " + size_string + ".png"
+                        world_surf = pygame.Surface((tile_scale * world.WORLD_SIZE_X, tile_scale * world.WORLD_SIZE_Y))
+                        for tile_x in range(len(world.world.tile_data)):
+                            for tile_y in range(len(world.world.tile_data[tile_x])):
+                                tile_id = world.world.tile_data[tile_x][tile_y][0]
+                                wall_id = world.world.tile_data[tile_x][tile_y][1]
+
+                                if tile_id != game_data.air_tile_id:
+                                    tile_data = game_data.get_tile_by_id(tile_id)
+                                    if tile_data["@average_colour"] != (255, 0, 255):
+                                        pygame.draw.rect(world_surf, tile_data["@average_colour"], Rect(tile_x * tile_scale, tile_y * tile_scale, tile_scale, tile_scale), 0)
+                                        continue
+
+                                if wall_id != game_data.air_wall_id:
+                                    wall_data = game_data.get_wall_by_id(wall_id)
+                                    if wall_data["@average_colour"] != (255, 0, 255):
+                                        pygame.draw.rect(world_surf, wall_data["@average_colour"], Rect(tile_x * tile_scale, tile_y * tile_scale, tile_scale, tile_scale), 0)
+                                        continue
+
+                                sky_darken_factor = 1.0 - 0.7 * min(1.0, max(0.0, (tile_y - 55) / 110))
+                                colour = shared_methods.darken_colour((135, 206, 234), sky_darken_factor)
+                                pygame.draw.rect(world_surf, colour, Rect(tile_x * tile_scale, tile_y * tile_scale, tile_scale, tile_scale), 0)
+
+                        pygame.image.save(world_surf, path)
+                        entity_manager.add_message("World Snapshotshot Saved to: '" + path + "'", (255, 223, 10), outline_colour=(80, 70, 3))
+
                 # Gravity Reverse Cheat
                 if event.key == K_g:
                     if commons.SHIFT_ACTIVE:
-                        commons.GRAVITY = -commons.GRAVITY;
-                        entity_manager.AddMessage("Gravity reversed", (255, 223, 10), outlineColour = (80, 70, 3));
+                        commons.GRAVITY = -commons.GRAVITY
+                        entity_manager.add_message("Gravity reversed", (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Random Item Prefix Cheat
                 if event.key == K_c:
                     if commons.SHIFT_ACTIVE:
-                        if entity_manager.clientPlayer.hotbar[entity_manager.clientPlayer.hotbarIndex] != None:
-                            entity_manager.clientPlayer.hotbar[entity_manager.clientPlayer.hotbarIndex] = Item(entity_manager.clientPlayer.hotbar[entity_manager.clientPlayer.hotbarIndex].ID);
-                            entity_manager.AddMessage("Item prefix randomized", (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), life = 2.5);
-                            entity_manager.clientPlayer.RenderCurrentItemImage();
-                            RenderHandText();
+                        if entity_manager.client_player.items[ItemLocation.HOTBAR][entity_manager.client_player.hotbar_index] is not None:
+                            entity_manager.client_player.items[ItemLocation.HOTBAR][entity_manager.client_player.hotbar_index] = Item(entity_manager.client_player.items[ItemLocation.HOTBAR][entity_manager.client_player.hotbar_index].item_id, auto_assign_prefix=True)
+                            entity_manager.add_message("Item prefix randomized", (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), life=2.5)
+                            entity_manager.client_player.render_current_item_image()
+                            render_hand_text()
                 
                 # Test Prompt Cheat
                 if event.key == K_v:
                     if commons.SHIFT_ACTIVE:
-                        entity_manager.clientPrompt = prompt.Prompt("test","My name's the guide, I can help you around this awfully crafted world. It's basically just a rip off of terraria so this should be child's play");
-                        entity_manager.AddMessage("Random prompt delpoyed", (255, 223, 10), outlineColour = (80, 70, 3));
+                        entity_manager.client_prompt = prompt.Prompt("test", "My name's the guide, I can help you around this awfully crafted world. It's basically just a rip off of terraria so this should be child's play")
+                        entity_manager.add_message("Random prompt deployed", (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Get Tile and Wall IDS
                 if event.key == K_p:
                     if commons.SHIFT_ACTIVE: 
-                        if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
-                            wallID = world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][1];
-                            entity_manager.AddMessage("Wall at (" + str(commons.TILE_POSITION_MOUSE_HOVERING[0]) + ", " + str(commons.TILE_POSITION_MOUSE_HOVERING[1]) + ") has ID: " + str(wallID), (255, 223, 10), outlineColour = (80, 70, 3));
+                        if world.tile_in_map(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
+                            wallID = world.world.tile_data[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][1]
+                            entity_manager.add_message("Wall at (" + str(commons.TILE_POSITION_MOUSE_HOVERING[0]) + ", " + str(commons.TILE_POSITION_MOUSE_HOVERING[1]) + ") has ID: " + str(wallID), (255, 223, 10), outline_colour=(80, 70, 3))
                     else:
-                        if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
-                            tileID = world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0];
-                            entity_manager.AddMessage("Tile at (" + str(commons.TILE_POSITION_MOUSE_HOVERING[0]) + ", " + str(commons.TILE_POSITION_MOUSE_HOVERING[1]) + ") has ID: " + str(tileID), (255, 223, 10), outlineColour = (80, 70, 3));
-                
-                # Spawn loot chest at mouse
-                if event.key == K_m:
-                    #world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0] = 274;
-                    #world.mapData[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1] + 1][0] = 284;
-                    if world.TileInMapRange(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
-                        world.SpawnLootChest(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]);
-                    
-                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1], affectOthers = False);
-                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0] + 1, commons.TILE_POSITION_MOUSE_HOVERING[1], affectOthers = False);
-                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1] + 1, affectOthers = False);
-                        world.UpdateTerrainSurface(commons.TILE_POSITION_MOUSE_HOVERING[0] + 1, commons.TILE_POSITION_MOUSE_HOVERING[1] + 1, affectOthers = False);
+                        if world.tile_in_map(commons.TILE_POSITION_MOUSE_HOVERING[0], commons.TILE_POSITION_MOUSE_HOVERING[1]):
+                            tileID = world.world.tile_data[commons.TILE_POSITION_MOUSE_HOVERING[0]][commons.TILE_POSITION_MOUSE_HOVERING[1]][0]
+                            entity_manager.add_message("Tile at (" + str(commons.TILE_POSITION_MOUSE_HOVERING[0]) + ", " + str(commons.TILE_POSITION_MOUSE_HOVERING[1]) + ") has ID: " + str(tileID), (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Toggle UI
                 if event.key == K_u:
-                    commons.DRAWUI = not commons.DRAWUI;
-                    entity_manager.AddMessage("UI " + shared_methods.GetOnOff(commons.DRAWUI), (255, 223, 10), outlineColour = (80, 70, 3));
+                    commons.DRAWUI = not commons.DRAWUI
+                    entity_manager.add_message("UI " + shared_methods.get_on_off(commons.DRAWUI), (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Toggle SMOOTHCAM
                 if event.key == K_j:
-                    commons.SMOOTHCAM = not commons.SMOOTHCAM;
-                    entity_manager.AddMessage("Smooth camera " + shared_methods.GetOnOff(commons.SMOOTHCAM), (255, 223, 10), outlineColour = (80, 70, 3));
+                    commons.SMOOTHCAM = not commons.SMOOTHCAM
+                    entity_manager.add_message("Smooth camera " + shared_methods.get_on_off(commons.SMOOTHCAM), (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Toggle HITBOXES
                 if event.key == K_h:
-                    commons.HITBOXES = not commons.HITBOXES;
-                    entity_manager.AddMessage("Hitboxes " + shared_methods.GetOnOff(commons.HITBOXES), (255, 223, 10), outlineColour = (80, 70, 3));
+                    commons.HITBOXES = not commons.HITBOXES
+                    entity_manager.add_message("Hitboxes " + shared_methods.get_on_off(commons.HITBOXES), (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Hotbar Item Selection
-                if event.key==K_1: entity_manager.clientPlayer.hotbarIndex = 0; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_2: entity_manager.clientPlayer.hotbarIndex = 1; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_3: entity_manager.clientPlayer.hotbarIndex = 2; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_4: entity_manager.clientPlayer.hotbarIndex = 3; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_5: entity_manager.clientPlayer.hotbarIndex = 4; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_6: entity_manager.clientPlayer.hotbarIndex = 5; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_7: entity_manager.clientPlayer.hotbarIndex = 6; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_8: entity_manager.clientPlayer.hotbarIndex = 7; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_9: entity_manager.clientPlayer.hotbarIndex = 8; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                if event.key==K_0: entity_manager.clientPlayer.hotbarIndex = 9; entity_manager.clientPlayer.RenderCurrentItemImage(); entity_manager.clientPlayer.itemSwing = False; RenderHandText();
-                
-                if commons.SOUND:
-                    if event.key == K_1 or event.key == K_2 or event.key == K_3 or event.key == K_4 or event.key == K_5 or event.key == K_6 or event.key == K_7 or event.key == K_8 or event.key == K_9 or event.key == K_0:
-                        sound_manager.sounds[26].play();
+                if event.key == K_1:
+                    entity_manager.client_player.hotbar_index = 0
+                if event.key == K_2:
+                    entity_manager.client_player.hotbar_index = 1
+                if event.key == K_3:
+                    entity_manager.client_player.hotbar_index = 2
+                if event.key == K_4:
+                    entity_manager.client_player.hotbar_index = 3
+                if event.key == K_5:
+                    entity_manager.client_player.hotbar_index = 4
+                if event.key == K_6:
+                    entity_manager.client_player.hotbar_index = 5
+                if event.key == K_7:
+                    entity_manager.client_player.hotbar_index = 6
+                if event.key == K_8:
+                    entity_manager.client_player.hotbar_index = 7
+                if event.key == K_9:
+                    entity_manager.client_player.hotbar_index = 8
+                if event.key == K_0:
+                    entity_manager.client_player.hotbar_index = 9
+
+                if event.key == K_1 or event.key == K_2 or event.key == K_3 or event.key == K_4 or event.key == K_5 or event.key == K_6 or event.key == K_7 or event.key == K_8 or event.key == K_9 or event.key == K_0:
+                    entity_manager.client_player.render_current_item_image()
+                    entity_manager.client_player.item_swing = False
+                    render_hand_text()
+
+                    game_data.play_sound("fg.sound.menu_select")
                 
                 # Toggle Lighting
                 if event.key == K_l:
-                    #if commons.SHIFT_ACTIVE:
-                        commons.EXPERIMENTALLIGHTING = not commons.EXPERIMENTALLIGHTING;
-                        entity_manager.AddMessage("Experimental lighting "  + shared_methods.GetOnOff(commons.EXPERIMENTALLIGHTING), (255, 223, 10), outlineColour = (80, 70, 3));
+                    commons.EXPERIMENTALLIGHTING = not commons.EXPERIMENTALLIGHTING
+                    entity_manager.add_message("Experimental lighting " + shared_methods.get_on_off(commons.EXPERIMENTALLIGHTING), (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Toggle Background
                 if event.key == K_b:
                     if commons.SHIFT_ACTIVE:
-                        commons.BACKGROUND = not commons.BACKGROUND;
-                        entity_manager.AddMessage("Background " + shared_methods.GetOnOff(commons.BACKGROUND), (255, 223, 10), outlineColour = (80, 70, 3));
+                        commons.BACKGROUND = not commons.BACKGROUND
+                        entity_manager.add_message("Background " + shared_methods.get_on_off(commons.BACKGROUND), (255, 223, 10), outline_colour=(80, 70, 3))
 
                 # Music Volume Up
                 if event.key == K_UP and commons.SHIFT_ACTIVE:
-                    sound_manager.ChangeMusicVolume(0.05);
+                    sound_manager.change_music_volume(0.05)
                 
                 # Music Volume Down
                 if event.key == K_DOWN and commons.SHIFT_ACTIVE:
-                    sound_manager.ChangeMusicVolume(-0.05);
+                    sound_manager.change_music_volume(-0.05)
                 
                 # Sound Volume Up
                 if event.key == K_RIGHT and commons.SHIFT_ACTIVE:
-                    sound_manager.ChangeSoundVolume(0.05);
+                    sound_manager.change_sound_volume(0.05)
 
                 # Sound Volume Down
                 if event.key == K_LEFT and commons.SHIFT_ACTIVE:
-                    sound_manager.ChangeSoundVolume(-0.05);
+                    sound_manager.change_sound_volume(-0.05)
                 
-            # Keyup Events
+            # Key up Events
             if event.type == KEYUP:
                 if event.key == K_a:
-                    entity_manager.clientPlayer.movingLeft = False;
+                    entity_manager.client_player.moving_left = False
                 if event.key == K_d:
-                    entity_manager.clientPlayer.movingRight = False;
+                    entity_manager.client_player.moving_right = False
                 if event.key == K_s:
-                    entity_manager.clientPlayer.movingDownTick = 5;
-                    entity_manager.clientPlayer.stopMovingDown = True;
-                    entity_manager.clientPlayer.animationSpeed = 0.025;
+                    entity_manager.client_player.moving_down_tick = 5
+                    entity_manager.client_player.stop_moving_down = True
+                    entity_manager.client_player.animation_speed = 0.025
                     
             # Hotbar Item and Crafting Scrolling
             if event.type == MOUSEBUTTONDOWN:
                 if event.button == 4:
-                    if entity_manager.clientPlayer.inventoryOpen:
-                        entity_manager.clientPlayer.craftingMenuOffsetVelocityY += 3;
+                    if entity_manager.client_player.inventory_open:
+                        entity_manager.client_player.crafting_menu_offset_velocity_y += 200
                     else:
-                        if entity_manager.clientPlayer.hotbarIndex > 0:
-                            entity_manager.clientPlayer.hotbarIndex -= 1;
-                            entity_manager.clientPlayer.RenderCurrentItemImage();
-                            entity_manager.clientPlayer.itemSwing = False;
-                            RenderHandText();
-                            if commons.SOUND:
-                                sound_manager.sounds[26].play();
+                        if entity_manager.client_player.hotbar_index > 0:
+                            entity_manager.client_player.hotbar_index -= 1
+                            entity_manager.client_player.render_current_item_image()
+                            entity_manager.client_player.item_swing = False
+                            render_hand_text()
+                            game_data.play_sound("fg.sound.menu_select")
                         else:
-                            entity_manager.clientPlayer.hotbarIndex = 9;
+                            entity_manager.client_player.hotbar_index = 9
 
                 if event.button == 5:
-                    if entity_manager.clientPlayer.inventoryOpen:
-                        entity_manager.clientPlayer.craftingMenuOffsetVelocityY -= 3;
+                    if entity_manager.client_player.inventory_open:
+                        entity_manager.client_player.crafting_menu_offset_velocity_y -= 200
                     else:
-                        if entity_manager.clientPlayer.hotbarIndex < 9:
-                            entity_manager.clientPlayer.hotbarIndex += 1;
-                            entity_manager.clientPlayer.RenderCurrentItemImage();
-                            entity_manager.clientPlayer.itemSwing = False;
-                            RenderHandText();
-                            if commons.SOUND:
-                                sound_manager.sounds[26].play();
+                        if entity_manager.client_player.hotbar_index < 9:
+                            entity_manager.client_player.hotbar_index += 1
+                            entity_manager.client_player.render_current_item_image()
+                            entity_manager.client_player.item_swing = False
+                            render_hand_text()
+                            game_data.play_sound("fg.sound.menu_select")
                         else:
-                            entity_manager.clientPlayer.hotbarIndex = 0;
+                            entity_manager.client_player.hotbar_index = 0
 
         elif commons.GAME_STATE == "MAINMENU":
 
             if commons.GAME_SUB_STATE == "PLAYERSELECTION" or commons.GAME_SUB_STATE == "WORLDSELECTION":
                 if event.type == MOUSEBUTTONDOWN:
                     if event.button == 4:
-                        saveSelectYVel += 3;
+                        save_select_y_velocity += 3
                     if event.button == 5:
-                        saveSelectYVel -= 3;
+                        save_select_y_velocity -= 3
 
             elif commons.GAME_SUB_STATE == "PLAYERNAMING" or commons.GAME_SUB_STATE == "WORLDNAMING":
                 if event.type == KEYDOWN:
-                    if event.key == K_a:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "A";
-                        else:
-                            commons.TEXT_INPUT += "a";
-                    elif event.key==K_b:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "B";
-                        else:
-                            commons.TEXT_INPUT += "b";
-                    elif event.key == K_c:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "C";
-                        else:
-                            commons.TEXT_INPUT += "c";
-                    elif event.key == K_d:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "D";
-                        else:
-                            commons.TEXT_INPUT += "d";
-                    elif event.key == K_e:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "E";
-                        else:
-                            commons.TEXT_INPUT += "e";
-                    elif event.key == K_f:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "F";
-                        else:
-                            commons.TEXT_INPUT += "f";
-                    elif event.key == K_g:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "G";
-                        else:
-                            commons.TEXT_INPUT += "g";
-                    elif event.key == K_h:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "H";
-                        else:
-                            commons.TEXT_INPUT += "h";
-                    elif event.key == K_i:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "I";
-                        else:
-                            commons.TEXT_INPUT += "i";
-                    elif event.key == K_j:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "J";
-                        else:
-                            commons.TEXT_INPUT += "j";
-                    elif event.key == K_k:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "K";
-                        else:
-                            commons.TEXT_INPUT += "k";
-                    elif event.key == K_l:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "L";
-                        else:
-                            commons.TEXT_INPUT += "l";
-                    elif event.key == K_m:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "M";
-                        else:
-                            commons.TEXT_INPUT += "m";
-                    elif event.key == K_n:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "N";
-                        else:
-                            commons.TEXT_INPUT += "n";
-                    elif event.key == K_o:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "O";
-                        else:
-                            commons.TEXT_INPUT += "o";
-                    elif event.key == K_p:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "P";
-                        else:
-                            commons.TEXT_INPUT += "p";
-                    elif event.key == K_q:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "Q";
-                        else:
-                            commons.TEXT_INPUT += "q";
-                    elif event.key == K_r:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "R";
-                        else:
-                            commons.TEXT_INPUT += "r";
-                    elif event.key == K_s:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "S";
-                        else:
-                            commons.TEXT_INPUT += "s";
-                    elif event.key == K_t:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "T";
-                        else:
-                            commons.TEXT_INPUT += "t";
-                    elif event.key == K_u:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "U";
-                        else:
-                            commons.TEXT_INPUT += "u";
-                    elif event.key == K_v:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "V";
-                        else:
-                            commons.TEXT_INPUT += "v";
-                    elif event.key == K_w:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "W";
-                        else:
-                            commons.TEXT_INPUT += "w";
-                    elif event.key == K_x:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "X";
-                        else:
-                            commons.TEXT_INPUT += "x";
-                    elif event.key == K_y:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "Y";
-                        else:
-                            commons.TEXT_INPUT += "y";
-                    elif event.key == K_z:
-                        if commons.SHIFT_ACTIVE:
-                            commons.TEXT_INPUT += "Z";
-                        else:
-                            commons.TEXT_INPUT += "z";
-                    elif event.key == K_0:
-                        commons.TEXT_INPUT += "0";
-                    elif event.key == K_1:
-                        commons.TEXT_INPUT += "1";
-                    elif event.key == K_2:
-                        commons.TEXT_INPUT += "2";
-                    elif event.key == K_3:
-                        commons.TEXT_INPUT += "3";
-                    elif event.key == K_4:
-                        commons.TEXT_INPUT += "4";
-                    elif event.key == K_5:
-                        commons.TEXT_INPUT += "5";
-                    elif event.key == K_6:
-                        commons.TEXT_INPUT += "6";
-                    elif event.key == K_7:
-                        commons.TEXT_INPUT += "7";
-                    elif event.key == K_8:
-                        commons.TEXT_INPUT += "8";
-                    elif event.key == K_9:
-                        commons.TEXT_INPUT += "9";
-                    elif event.key == K_SPACE:
-                            commons.TEXT_INPUT += " ";
-                    elif event.key == K_BACKSPACE:
-                            commons.TEXT_INPUT = commons.TEXT_INPUT[:-1];
-                    if len(commons.TEXT_INPUT) > 12:
-                        commons.TEXT_INPUT = commons.TEXT_INPUT[:-1];
+                    if event.key == K_BACKSPACE:
+                        commons.TEXT_INPUT = commons.TEXT_INPUT[:-1]
+                    elif (len(commons.TEXT_INPUT) <= 15 and commons.GAME_SUB_STATE == "PLAYERNAMING") or (len(commons.TEXT_INPUT) <= 27 and commons.GAME_SUB_STATE == "WORLDNAMING"):
+                        commons.TEXT_INPUT += event.unicode
                     
-    pygame.display.flip();
-    clock.tick(commons.TARGETFPS);
+    pygame.display.flip()
+    clock.tick(commons.TARGETFPS)
