@@ -47,16 +47,11 @@ def darken_colour(colour, factor=0.6):
     shared_methods.get_block_average_colour -> tuple
 
     Given a tile_id, the average colour of that tile's image is computed using the 'pygame.transform.average_color'
-    function
+    function, or potentially overridden in the tile tool
 -----------------------------------------------------------------------------------------------------------------"""
 def get_block_average_colour(tile_id):
     tile_data = game_data.get_tile_by_id(tile_id)
-    if TileTag.PLATFORM in tile_data["@tags"]:
-        return pygame.transform.average_color(tile_data["@image"], Rect(commons.BLOCKSIZE / 8, commons.BLOCKSIZE / 8, commons.BLOCKSIZE * 3 / 4, commons.BLOCKSIZE / 4))
-    if TileTag.MULTITILE in tile_data["@tags"]:
-        return pygame.transform.average_color(tile_data["@multitile_image"])
-    return pygame.transform.average_color(tile_data["@image"])
-
+    return tile_data["@average_colour"]
 
 """================================================================================================================= 
     shared_methods.get_tier_colour -> tuple

@@ -774,10 +774,7 @@ class Player:
 
                                     entity_manager.spawn_physics_item(Item(item_id), ((block_position[0] + 0.5) * commons.BLOCKSIZE, (block_position[1] + 0.5) * commons.BLOCKSIZE), pickup_delay=10)
                                 world.update_terrain_surface(block_position[0], block_position[1])
-                                if tile_id in game_data.platform_blocks:
-                                    colour = pygame.transform.average_color(tile_dat["@image"], Rect(commons.BLOCKSIZE / 8, commons.BLOCKSIZE / 8, commons.BLOCKSIZE * 3 / 4, commons.BLOCKSIZE / 4))
-                                else:
-                                    colour = pygame.transform.average_color(tile_dat["@image"])
+                                colour = tile_dat["@average_colour"]
 
                                 game_data.play_tile_hit_sfx(tile_id)
                                 if commons.PARTICLES:
